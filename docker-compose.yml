@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - JWT_SECRET=${JWT_SECRET:-supersecret_moba_clone_key}
+      - DB_FILE=/app/data/database.sqlite
+    volumes:
+      - backend-data:/app/data
+    restart: unless-stopped
+    networks:
+      - xterm-network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - xterm-network
+
+volumes:
+  backend-data:
+
+networks:
+  xterm-network:
+    driver: bridge
