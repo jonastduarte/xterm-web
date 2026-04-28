@@ -10,6 +10,8 @@ import { Readable, Writable } from 'stream';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
+import net from 'net';
+import { encrypt, decrypt, hashMasterPassword, verifyMasterPassword } from './crypto';
 
 const app = express();
 app.use(cors());
@@ -49,8 +51,21 @@ app.get('/api/folders', async (req, res) => {
 
 app.post('/api/folders', async (req, res) => {
   try {
-    const result = await dbRun('INSERT INTO folders (name) VALUES (?)', [req.body.name || 'New Folder']);
-    res.json({ id: result.lastID, name: req.body.name });
+    const parentId = req.body.parent_id || null;
+    const result = await dbRun('INSERT INTO folders (name, parent_id) VALUES (?, ?)', [req.body.name || 'New Folder', parentId]);
+    res.json({ id: result.lastID, name: req.body.name, parent_id: parentId });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+app.put('/api/folders/:id', async (req, res) => {
+  try {
+    const { parent_id } = req.body;
+    // Prevent a folder from being moved into itself
+    if (parseInt(req.params.id) === parent_id) {
+      return res.status(400).json({ error: 'Cannot move a folder into itself' });
+    }
+    await dbRun('UPDATE folders SET parent_id = ? WHERE id = ?', [parent_id !== undefined ? parent_id : null, req.params.id]);
+    res.json({ success: true });
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
@@ -88,9 +103,15 @@ app.put('/api/sessions/:id', async (req, res) => {
     if (folder_id !== undefined && !host) {
       await dbRun('UPDATE sessions SET folder_id = ? WHERE id = ?', [folder_id, req.params.id]);
     } else {
+      // If password is masked ('***'), keep the existing one
+      let finalPassword = password;
+      if (password === '***' || password === undefined) {
+        const existing = await dbQuery('SELECT password FROM sessions WHERE id = ?', [req.params.id]);
+        finalPassword = existing[0]?.password || '';
+      }
       await dbRun(
         'UPDATE sessions SET name=?, host=?, port=?, username=?, password=?, folder_id=?, protocol=?, auth_type=?, private_key=?, use_sftp=? WHERE id=?',
-        [name, host, port, username, password, folder_id, protocol || 'ssh', auth_type || 'password', private_key || null, use_sftp !== undefined ? use_sftp : 1, req.params.id]
+        [name, host, port, username, finalPassword, folder_id, protocol || 'ssh', auth_type || 'password', private_key || null, use_sftp !== undefined ? use_sftp : 1, req.params.id]
       );
     }
     res.json({ message: 'Updated' });
@@ -118,6 +139,121 @@ app.get('/api/history', async (req, res) => {
   try {
     const rows = await dbQuery('SELECT * FROM connection_log ORDER BY connected_at DESC LIMIT 50');
     res.json(rows);
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+// ===== Password Vault =====
+
+// Check if master password is set
+app.get('/api/vault/status', async (req, res) => {
+  try {
+    const users = await dbQuery('SELECT master_password_hash FROM users WHERE id = 1');
+    const hasVault = !!(users[0]?.master_password_hash);
+    res.json({ hasVault });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+// Set master password (first time)
+app.post('/api/vault/setup', async (req, res) => {
+  try {
+    const { masterPassword } = req.body;
+    if (!masterPassword || masterPassword.length < 4) {
+      return res.status(400).json({ error: 'Master password must be at least 4 characters' });
+    }
+    const users = await dbQuery('SELECT master_password_hash FROM users WHERE id = 1');
+    if (users[0]?.master_password_hash) {
+      return res.status(400).json({ error: 'Master password already set. Use change endpoint.' });
+    }
+    const hash = hashMasterPassword(masterPassword);
+    await dbRun('UPDATE users SET master_password_hash = ? WHERE id = 1', [hash]);
+    res.json({ message: 'Master password set successfully' });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+// Verify master password
+app.post('/api/vault/verify', async (req, res) => {
+  try {
+    const { masterPassword } = req.body;
+    const users = await dbQuery('SELECT master_password_hash FROM users WHERE id = 1');
+    if (!users[0]?.master_password_hash) {
+      return res.json({ valid: true, noVault: true });
+    }
+    const valid = verifyMasterPassword(masterPassword, users[0].master_password_hash);
+    res.json({ valid });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+// Get session with decrypted password (requires master password)
+app.post('/api/sessions/:id/decrypt', async (req, res) => {
+  try {
+    const { masterPassword } = req.body;
+    const rows = await dbQuery('SELECT * FROM sessions WHERE id = ?', [req.params.id]);
+    if (rows.length === 0) return res.status(404).json({ error: 'Session not found' });
+    const session = rows[0];
+    // Try to decrypt password
+    if (session.password && masterPassword) {
+      try {
+        const decrypted = decrypt(session.password, masterPassword);
+        session.password = decrypted || session.password; // fallback if not encrypted
+      } catch { /* password may not be encrypted yet */ }
+    }
+    res.json(session);
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+// ===== Import/Export Sessions =====
+app.get('/api/sessions/export/all', async (req, res) => {
+  try {
+    const sessions = await dbQuery('SELECT id, name, host, port, username, folder_id, protocol, auth_type, use_sftp FROM sessions');
+    const folders = await dbQuery('SELECT * FROM folders');
+    res.setHeader('Content-Disposition', 'attachment; filename=xterm-web-sessions.json');
+    res.json({ version: 1, exportedAt: new Date().toISOString(), folders, sessions });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/sessions/import', async (req, res) => {
+  try {
+    const { folders, sessions } = req.body;
+    let imported = 0;
+    // Import folders first
+    const folderMap: Record<number, number> = {};
+    if (folders) {
+      for (const f of folders) {
+        const result = await dbRun('INSERT INTO folders (name) VALUES (?)', [f.name]);
+        folderMap[f.id] = result.lastID as number;
+      }
+    }
+    // Import sessions
+    if (sessions) {
+      for (const s of sessions) {
+        const newFolderId = s.folder_id ? (folderMap[s.folder_id] || null) : null;
+        await dbRun(
+          'INSERT INTO sessions (name, host, port, username, password, folder_id, protocol, auth_type, use_sftp) VALUES (?,?,?,?,?,?,?,?,?)',
+          [s.name, s.host, s.port || 22, s.username || '', '', newFolderId, s.protocol || 'ssh', s.auth_type || 'password', s.use_sftp ?? 1]
+        );
+        imported++;
+      }
+    }
+    res.json({ message: `Imported ${imported} sessions` });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+// ===== Settings =====
+app.get('/api/settings', async (req, res) => {
+  try {
+    const rows = await dbQuery('SELECT key, value FROM settings');
+    const settings: Record<string, string> = {};
+    rows.forEach((r: any) => { settings[r.key] = r.value; });
+    res.json(settings);
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+app.put('/api/settings', async (req, res) => {
+  try {
+    for (const [key, value] of Object.entries(req.body)) {
+      await dbRun('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', [key, value as string]);
+    }
+    res.json({ message: 'Settings saved' });
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
@@ -342,6 +478,7 @@ wss.on('connection', (ws: WebSocket) => {
   const ssh = new Client();
   let shellStream: any = null;
   let sftpSession: any = null;
+  let telnetSocket: net.Socket | null = null;
 
   ws.on('message', (message: string) => {
     let data: any;
@@ -354,7 +491,35 @@ wss.on('connection', (ws: WebSocket) => {
     if (data.type === 'connect') {
       const { host, port, username, password, protocol } = data.payload;
       
-      if (protocol === 'sftp') {
+      if (protocol === 'telnet') {
+        // Telnet: raw TCP connection
+        const telnetPort = port || 23;
+        telnetSocket = net.createConnection({ host, port: telnetPort }, () => {
+          ws.send(JSON.stringify({ type: 'status', payload: 'Connected' }));
+          // Send username if provided (many telnet servers prompt for login)
+          if (username) {
+            setTimeout(() => telnetSocket?.write(username + '\r\n'), 500);
+            if (password) {
+              setTimeout(() => telnetSocket?.write(password + '\r\n'), 1500);
+            }
+          }
+        });
+
+        telnetSocket.on('data', (d: Buffer) => {
+          ws.send(JSON.stringify({ type: 'data', payload: d.toString('utf-8') }));
+        });
+
+        telnetSocket.on('close', () => {
+          ws.send(JSON.stringify({ type: 'status', payload: 'Closed' }));
+          telnetSocket = null;
+        });
+
+        telnetSocket.on('error', (err: any) => {
+          ws.send(JSON.stringify({ type: 'error', payload: err.message || 'Telnet connection failed' }));
+          telnetSocket = null;
+        });
+
+      } else if (protocol === 'sftp') {
         // SFTP-only connection (no shell)
         ssh.on('ready', () => {
           ws.send(JSON.stringify({ type: 'status', payload: 'SFTP Connected' }));
@@ -406,9 +571,10 @@ wss.on('connection', (ws: WebSocket) => {
       }
     }
 
-    // Terminal data
-    if (data.type === 'data' && shellStream) {
-      shellStream.write(data.payload);
+    // Terminal data (SSH shell or Telnet)
+    if (data.type === 'data') {
+      if (shellStream) shellStream.write(data.payload);
+      else if (telnetSocket) telnetSocket.write(data.payload);
     }
 
     // Terminal resize
@@ -498,6 +664,7 @@ wss.on('connection', (ws: WebSocket) => {
 
   ws.on('close', () => {
     ssh.end();
+    if (telnetSocket) { telnetSocket.destroy(); telnetSocket = null; }
   });
 });
 

@@ -9,14 +9,23 @@ const db = new sqlite3.Database(dbPath, (err) => {
   } else {
     console.log('Connected to SQLite database.');
     db.serialize(() => {
-      // Users
-      db.run(`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, username TEXT, password TEXT)`);
+      // Users — now with master_password_hash for vault
+      db.run(`CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY,
+        username TEXT,
+        password TEXT,
+        master_password_hash TEXT
+      )`);
       db.run(`INSERT INTO users (id, username, password) SELECT 1, 'admin', 'admin' WHERE NOT EXISTS (SELECT 1 FROM users WHERE id = 1)`);
       
+      // Migrate: add master_password_hash column if it doesn't exist
+      db.run(`ALTER TABLE users ADD COLUMN master_password_hash TEXT`, () => { /* ignore if exists */ });
+
       // Folders
-      db.run(`CREATE TABLE IF NOT EXISTS folders (id INTEGER PRIMARY KEY, name TEXT)`);
+      db.run(`CREATE TABLE IF NOT EXISTS folders (id INTEGER PRIMARY KEY, name TEXT, parent_id INTEGER)`);
+      db.run(`ALTER TABLE folders ADD COLUMN parent_id INTEGER`, () => { /* ignore if exists */ });
       
-      // Sessions — now with protocol, auth_type, private_key support
+      // Sessions — with protocol, auth_type, private_key support
       db.run(`CREATE TABLE IF NOT EXISTS sessions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT,
@@ -48,6 +57,12 @@ const db = new sqlite3.Database(dbPath, (err) => {
         connected_at TEXT DEFAULT (datetime('now')),
         disconnected_at TEXT,
         status TEXT DEFAULT 'connected'
+      )`);
+
+      // Settings table — for auto-launch, preferences, etc.
+      db.run(`CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY,
+        value TEXT
       )`);
     });
   }

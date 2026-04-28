@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Terminal, Monitor, Server, FileText, Globe, Cloud, Database, X, Key, Lock } from 'lucide-react';
+import { Terminal, Monitor, Server, FileText, Globe, Cloud, Database, X, Key, Lock, SlidersHorizontal } from 'lucide-react';
 
 interface SessionDialogProps {
   onClose: () => void;
@@ -12,6 +12,13 @@ const SessionDialog: React.FC<SessionDialogProps> = ({ onClose, onSave, initialD
   const defaultProtocol = initialData?.protocol || 'ssh';
   const defaultPort = initialData?.port || (defaultProtocol === 'ftp' ? 21 : 22);
   
+  const [folders, setFolders] = useState<any[]>([]);
+  
+  useEffect(() => {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+    fetch(`${apiUrl}/api/folders`).then(r => r.json()).then(setFolders).catch(() => {});
+  }, []);
+
   const [activeTab, setActiveTab] = useState(defaultProtocol.toUpperCase());
   const [formData, setFormData] = useState({
     id: mode === 'clone' ? undefined : initialData?.id,
@@ -24,7 +31,7 @@ const SessionDialog: React.FC<SessionDialogProps> = ({ onClose, onSave, initialD
     protocol: defaultProtocol,
     auth_type: initialData?.auth_type || 'password',
     private_key: initialData?.private_key || '',
-    use_sftp: initialData?.use_sftp !== undefined ? initialData.use_sftp : 1
+    use_sftp: initialData?.use_sftp !== undefined ? initialData.use_sftp : 0
   });
 
   // Update port when switching protocol tabs
@@ -45,11 +52,12 @@ const SessionDialog: React.FC<SessionDialogProps> = ({ onClose, onSave, initialD
 
   const sessionTypes = [
     { id: 'SSH', icon: <Terminal size={22} color="#005A9E" />, enabled: true },
-    { id: 'Telnet', icon: <Monitor size={22} color="#555" />, enabled: false },
+    { id: 'Telnet', icon: <Monitor size={22} color="#16a085" />, enabled: true },
     { id: 'RDP', icon: <Monitor size={22} color="#2980b9" />, enabled: false },
     { id: 'VNC', icon: <Monitor size={22} color="#c0392b" />, enabled: false },
     { id: 'FTP', icon: <Globe size={22} color="#f39c12" />, enabled: true },
     { id: 'SFTP', icon: <FileText size={22} color="#8e44ad" />, enabled: true },
+    { id: 'Serial', icon: <SlidersHorizontal size={22} color="#7f8c8d" />, enabled: true },
     { id: 'Shell', icon: <Terminal size={22} color="#2c3e50" />, enabled: false },
   ];
 
@@ -71,6 +79,17 @@ const SessionDialog: React.FC<SessionDialogProps> = ({ onClose, onSave, initialD
               onChange={e => setFormData({...formData, name: e.target.value})} 
               style={inputStyle}
             />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+            <label style={labelStyle}>Folder</label>
+            <select
+              value={formData.folder_id || ''}
+              onChange={e => setFormData({...formData, folder_id: e.target.value ? parseInt(e.target.value) : null})}
+              style={inputStyle}
+            >
+              <option value="">(None)</option>
+              {folders.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+            </select>
           </div>
         </div>
 
@@ -210,6 +229,17 @@ const SessionDialog: React.FC<SessionDialogProps> = ({ onClose, onSave, initialD
               style={inputStyle}
             />
           </div>
+          <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+            <label style={labelStyle}>Folder</label>
+            <select
+              value={formData.folder_id || ''}
+              onChange={e => setFormData({...formData, folder_id: e.target.value ? parseInt(e.target.value) : null})}
+              style={inputStyle}
+            >
+              <option value="">(None)</option>
+              {folders.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+            </select>
+          </div>
         </div>
 
         <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
@@ -279,6 +309,17 @@ const SessionDialog: React.FC<SessionDialogProps> = ({ onClose, onSave, initialD
               style={inputStyle}
             />
           </div>
+          <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+            <label style={labelStyle}>Folder</label>
+            <select
+              value={formData.folder_id || ''}
+              onChange={e => setFormData({...formData, folder_id: e.target.value ? parseInt(e.target.value) : null})}
+              style={inputStyle}
+            >
+              <option value="">(None)</option>
+              {folders.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+            </select>
+          </div>
         </div>
 
         <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
@@ -327,6 +368,111 @@ const SessionDialog: React.FC<SessionDialogProps> = ({ onClose, onSave, initialD
     </div>
   );
 
+  const renderTelnetForm = () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div style={sectionStyle}>
+        <h4 style={sectionTitleStyle}>
+          <Monitor size={16} color="#16a085" style={{ marginRight: '6px' }} />
+          Telnet Connection Settings
+        </h4>
+        <p style={{ fontSize: '11px', color: '#888', margin: '0 0 12px 0' }}>
+          Unencrypted terminal connection via Telnet protocol.
+        </p>
+        <div style={{ display: 'flex', gap: '12px', marginBottom: '12px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+            <label style={labelStyle}>Session name <span style={{ color: '#999', fontWeight: 'normal' }}>(Optional)</span></label>
+            <input type="text" value={formData.name || ''} placeholder={formData.host || 'e.g. Router Console'} onChange={e => setFormData({...formData, name: e.target.value})} style={inputStyle} />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+            <label style={labelStyle}>Folder</label>
+            <select
+              value={formData.folder_id || ''}
+              onChange={e => setFormData({...formData, folder_id: e.target.value ? parseInt(e.target.value) : null})}
+              style={inputStyle}
+            >
+              <option value="">(None)</option>
+              {folders.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+            </select>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', flex: 2 }}>
+            <label style={labelStyle}>Remote host <span style={{ color: '#c0392b' }}>*</span></label>
+            <input type="text" value={formData.host} placeholder="192.168.0.1" onChange={e => setFormData({...formData, host: e.target.value})} style={inputStyle} />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+            <label style={labelStyle}>Username</label>
+            <input type="text" value={formData.username} placeholder="(optional)" onChange={e => setFormData({...formData, username: e.target.value})} style={inputStyle} />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', width: '70px' }}>
+            <label style={labelStyle}>Port</label>
+            <input type="number" value={formData.port} onChange={e => setFormData({...formData, port: parseInt(e.target.value)})} style={inputStyle} />
+          </div>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', width: '250px', marginTop: '12px' }}>
+          <label style={labelStyle}>Password</label>
+          <input type="password" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} style={inputStyle} placeholder="Enter password (if required)..." />
+        </div>
+      </div>
+    </div>
+  );
+  const renderSerialForm = () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <div style={sectionStyle}>
+        <h4 style={sectionTitleStyle}>
+          <SlidersHorizontal size={16} color="#7f8c8d" style={{ marginRight: '6px' }} />
+          Serial Connection Settings
+        </h4>
+        <p style={{ fontSize: '11px', color: '#888', margin: '0 0 12px 0' }}>
+          Connect to local serial ports using Web Serial API.
+        </p>
+        
+        <div style={{ display: 'flex', gap: '12px', marginBottom: '12px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+            <label style={labelStyle}>Session name <span style={{ color: '#999', fontWeight: 'normal' }}>(Optional)</span></label>
+            <input 
+              type="text" 
+              value={formData.name || ''} 
+              placeholder="e.g. Arduino"
+              onChange={e => setFormData({...formData, name: e.target.value})} 
+              style={inputStyle}
+            />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+            <label style={labelStyle}>Folder</label>
+            <select
+              value={formData.folder_id || ''}
+              onChange={e => setFormData({...formData, folder_id: e.target.value ? parseInt(e.target.value) : null})}
+              style={inputStyle}
+            >
+              <option value="">(None)</option>
+              {folders.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+            <label style={labelStyle}>Baud Rate</label>
+            <select 
+              value={formData.port} 
+              onChange={e => setFormData({...formData, port: parseInt(e.target.value)})} 
+              style={inputStyle}
+            >
+              {[110, 300, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200].map(b => (
+                <option key={b} value={b}>{b}</option>
+              ))}
+            </select>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+             <p style={{ fontSize: '10px', color: '#777', margin: '0 0 8px 0' }}>
+               Serial port selection happens when you click Connect.
+             </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
   return (
     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
       <div style={{ width: '820px', maxHeight: '90vh', backgroundColor: '#f0f0f0', borderRadius: '6px', boxShadow: '0 8px 30px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', border: '1px solid #999', fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", overflow: 'hidden' }}>
@@ -368,11 +514,13 @@ const SessionDialog: React.FC<SessionDialogProps> = ({ onClose, onSave, initialD
            {activeTab === 'SSH' && renderSSHForm()}
            {activeTab === 'SFTP' && renderSFTPForm()}
            {activeTab === 'FTP' && renderFTPForm()}
-           {!['SSH', 'SFTP', 'FTP'].includes(activeTab) && (
+           {activeTab === 'Telnet' && renderTelnetForm()}
+           {activeTab === 'Serial' && renderSerialForm()}
+           {!['SSH', 'SFTP', 'FTP', 'Telnet', 'Serial'].includes(activeTab) && (
               <div style={{ color: '#999', fontSize: '14px', textAlign: 'center', marginTop: '60px' }}>
                 <Monitor size={48} style={{ opacity: 0.3, marginBottom: '12px' }} />
                 <p>{activeTab} is not yet available in the Web Edition.</p>
-                <p style={{ fontSize: '12px' }}>Use SSH, SFTP, or FTP for now.</p>
+                <p style={{ fontSize: '12px' }}>Use SSH, SFTP, FTP, or Telnet for now.</p>
               </div>
            )}
         </div>
@@ -395,7 +543,7 @@ const SessionDialog: React.FC<SessionDialogProps> = ({ onClose, onSave, initialD
                onSave(saveData, mode === 'edit' ? 'edit' : 'create');
              }}
              style={saveBtnStyle}
-             disabled={!formData.host || !formData.username}
+             disabled={activeTab !== 'Serial' && (!formData.host || (!formData.username && activeTab !== 'Telnet' && activeTab !== 'FTP'))}
            >
               {mode === 'edit' ? 'Save Changes' : 'Connect & Save'}
            </button>

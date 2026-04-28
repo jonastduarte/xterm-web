@@ -2,17 +2,20 @@ import React, { useEffect, useRef } from 'react';
 import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import 'xterm/css/xterm.css';
+import { TabSession } from '../App';
 
 interface TerminalComponentProps {
-  ws: WebSocket;
-  tabId: string;
+  tab: TabSession;
 }
 
-const TerminalComponent: React.FC<TerminalComponentProps> = ({ ws, tabId }) => {
+const TerminalComponent: React.FC<TerminalComponentProps> = ({ tab }) => {
+  const { ws, protocol, session } = tab;
   const terminalRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const initializedRef = useRef(false);
+  const serialPortRef = useRef<any>(null);
+  const serialReaderRef = useRef<any>(null);
 
   useEffect(() => {
     if (!terminalRef.current || initializedRef.current) return;
@@ -56,19 +59,17 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ ws, tabId }) => {
     termRef.current = term;
     fitAddonRef.current = fitAddon;
 
-    // Helper: safe fit — only calls fit() when the container has real dimensions
     const safeFit = () => {
       const el = terminalRef.current;
       if (!el || el.offsetWidth === 0 || el.offsetHeight === 0) return;
       try {
         fitAddon.fit();
-        if (ws.readyState === WebSocket.OPEN) {
+        if (ws && ws.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({ type: 'resize', payload: { rows: term.rows, cols: term.cols } }));
         }
       } catch (_) { /* ignore */ }
     };
 
-    // Open AFTER the browser has painted the container (double rAF ensures layout)
     const openTerminal = () => {
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
@@ -76,18 +77,45 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ ws, tabId }) => {
           try {
             term.open(terminalRef.current);
           } catch (e) {
-            return; // container not ready
+            return;
           }
           term.writeln('\x1b[32mConnecting...\x1b[0m');
-          // Small extra delay for fonts/CSS to settle
           setTimeout(safeFit, 50);
+          
+          if (protocol === 'serial') {
+            connectSerial();
+          }
         });
       });
     };
 
+    const connectSerial = async () => {
+      if (!('serial' in navigator)) {
+        term.writeln('\r\n\x1b[31m[Error: Web Serial API not supported in this browser]\x1b[0m');
+        return;
+      }
+
+      try {
+        const port = await (navigator as any).serial.requestPort();
+        await port.open({ baudRate: Number(session?.port) || 9600 });
+        serialPortRef.current = port;
+        term.writeln('\x1b[32m[Serial Connected]\x1b[0m\r\n');
+
+        const reader = port.readable.getReader();
+        serialReaderRef.current = reader;
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          term.write(value);
+        }
+      } catch (err: any) {
+        term.writeln(`\r\n\x1b[31m[Serial Error: ${err.message}]\x1b[0m\r\n`);
+      }
+    };
+
     openTerminal();
 
-    // ── WebSocket messages ──
     const handleMessage = (event: MessageEvent) => {
       try {
         const data = JSON.parse(event.data);
@@ -100,16 +128,18 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ ws, tabId }) => {
         }
       } catch (_) {}
     };
-    ws.addEventListener('message', handleMessage);
+    if (ws) ws.addEventListener('message', handleMessage);
 
-    // ── Terminal input ──
-    const onDataDisposable = term.onData(data => {
-      if (ws.readyState === WebSocket.OPEN) {
+    const onDataDisposable = term.onData(async data => {
+      if (protocol === 'serial' && serialPortRef.current?.writable) {
+        const writer = serialPortRef.current.writable.getWriter();
+        await writer.write(new TextEncoder().encode(data));
+        writer.releaseLock();
+      } else if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: 'data', payload: data }));
       }
     });
 
-    // ── Resize observers ──
     window.addEventListener('resize', safeFit);
 
     const resizeObserver = new ResizeObserver(() => safeFit());
@@ -121,13 +151,21 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ ws, tabId }) => {
       initializedRef.current = false;
       window.removeEventListener('resize', safeFit);
       resizeObserver.disconnect();
-      ws.removeEventListener('message', handleMessage);
+      if (ws) ws.removeEventListener('message', handleMessage);
+      
+      if (serialReaderRef.current) {
+        try { serialReaderRef.current.cancel(); } catch(_) {}
+      }
+      if (serialPortRef.current) {
+        try { serialPortRef.current.close(); } catch(_) {}
+      }
+
       try { onDataDisposable.dispose(); } catch (_) {}
       try { term.dispose(); } catch (_) {}
       termRef.current = null;
       fitAddonRef.current = null;
     };
-  }, [ws, tabId]);
+  }, [ws, protocol, session]);
 
   return (
     <div

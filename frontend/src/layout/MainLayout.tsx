@@ -46,6 +46,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username }) =
   const [sessionDialogMode, setSessionDialogMode] = useState<'create'|'edit'|'clone'>('create');
   const [sftpPanelWidth, setSftpPanelWidth] = useState(240);
   const [showSftpPanel, setShowSftpPanel] = useState(true);
+  const [quickConnectState, setQuickConnectState] = useState<{ host: string; user: string; port: number; name: string } | null>(null);
+  const [quickConnectPassword, setQuickConnectPassword] = useState('');
 
   const activeTab = tabs.find(t => t.id === activeTabId) || null;
 
@@ -76,7 +78,31 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username }) =
       return Promise.resolve(session);
     };
 
-    getCredentials().then(realSession => {
+    getCredentials().then(async realSession => {
+      // Auto-save session if it doesn't have an ID (e.g. Quick Connect)
+      if (!realSession.id) {
+        try {
+          const saveResponse = await fetch(`${apiUrl}/api/sessions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ...realSession,
+              name: realSession.name || `${realSession.host}${realSession.port ? ':' + realSession.port : ''}`,
+              protocol: realSession.protocol || 'ssh'
+            })
+          });
+          if (saveResponse.ok) {
+            const saved = await saveResponse.json();
+            realSession.id = saved.id;
+            window.dispatchEvent(new Event('sessions-updated'));
+          }
+        } catch (e) { console.error('Auto-save failed', e); }
+      }
+
+      if (protocol === 'serial') {
+        return;
+      }
+
       const websocket = new WebSocket(wsUrl);
 
       websocket.onopen = () => {
@@ -145,10 +171,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username }) =
   };
 
   // Determine if we should show SFTP or FTP panel
-  const showFileBrowser = activeTab && activeTab.ws && showSftpPanel;
+  const showFileBrowser = activeTab && activeTab.ws && showSftpPanel && activeTab.session?.use_sftp === 1;
   const isSSHConnection = activeTab?.protocol === 'ssh';
   const isSFTPConnection = activeTab?.protocol === 'sftp';
   const isFTPConnection = activeTab?.protocol === 'ftp';
+  const isTelnetConnection = activeTab?.protocol === 'telnet';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: '#F0F0F0', fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif" }}>
@@ -181,6 +208,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username }) =
         <RibbonBtn icon={<TerminalSquare size={22} color="#27ae60" />} label="SSH" onClick={() => openSessionDialog('create')} />
         <RibbonBtn icon={<FileText size={22} color="#8e44ad" />} label="SFTP" onClick={() => { setEditingSession({ protocol: 'sftp' }); setSessionDialogMode('create'); setSessionDialogOpen(true); }} />
         <RibbonBtn icon={<Globe size={22} color="#f39c12" />} label="FTP" onClick={() => { setEditingSession({ protocol: 'ftp', port: 21 }); setSessionDialogMode('create'); setSessionDialogOpen(true); }} />
+        <RibbonBtn icon={<Monitor size={22} color="#16a085" />} label="Telnet" onClick={() => { setEditingSession({ protocol: 'telnet', port: 23 }); setSessionDialogMode('create'); setSessionDialogOpen(true); }} />
         <div style={{ width: '1px', height: '36px', backgroundColor: '#d3d3d3', margin: '0 2px' }} />
         <RibbonBtn icon={<FolderOpen size={22} color="#f1c40f" />} label="Sessions" />
         <RibbonBtn icon={<Eye size={22} color="#2ecc71" />} label="View" />
@@ -254,10 +282,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username }) =
                       host = parts[0];
                       port = parseInt(parts[1]) || 22;
                     }
-                    const pwd = prompt('Password:');
-                    if (pwd !== null) {
-                      createConnection({ host, port, username: user, password: pwd, name: val, protocol: 'ssh' });
-                    }
+                    // Trigger the password modal
+                    setQuickConnectState({ host, user, port, name: val });
+                    setQuickConnectPassword('');
                     (e.target as HTMLInputElement).value = '';
                   }
                 }
@@ -369,7 +396,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username }) =
                   maxWidth: '200px'
                 }}
               >
-                {tab.protocol === 'ftp' ? <Globe size={13} /> : tab.protocol === 'sftp' ? <FileText size={13} /> : <TerminalSquare size={13} />}
+                {tab.protocol === 'ftp' ? <Globe size={13} /> : tab.protocol === 'sftp' ? <FileText size={13} /> : tab.protocol === 'telnet' ? <Monitor size={13} /> : <TerminalSquare size={13} />}
                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{tab.label}</span>
                 <button 
                   onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }} 
@@ -420,20 +447,60 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username }) =
 
             {/* FTP Browser takes full width when protocol is ftp */}
             {showFileBrowser && isFTPConnection && (
-              <div style={{ flex: 1, backgroundColor: '#f0f0f0', display: 'flex', flexDirection: 'column' }}>
-                <FTPBrowser
-                  apiUrl={apiUrl}
-                  credentials={activeTab!.session}
-                />
-              </div>
-            )}
-            
-            {/* Terminal content area */}
-            {activeTab && !isFTPConnection && (
+        <div style={{ flex: 1, backgroundColor: '#f0f0f0', display: 'flex', flexDirection: 'column' }}>
+          <FTPBrowser
+            apiUrl={apiUrl}
+            credentials={activeTab!.session}
+          />
+        </div>
+      )}
+      
+      {/* Quick Connect Password Modal */}
+      {quickConnectState && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1100 }}>
+          <div style={{ width: '320px', backgroundColor: '#fff', borderRadius: '6px', boxShadow: '0 4px 12px rgba(0,0,0,0.2)', padding: '20px', display: 'flex', flexDirection: 'column' }}>
+            <h4 style={{ margin: '0 0 12px 0', color: '#333', fontSize: '14px' }}>Password Required</h4>
+            <p style={{ margin: '0 0 16px 0', color: '#666', fontSize: '12px' }}>
+              Connect to {quickConnectState.user}@{quickConnectState.host}:{quickConnectState.port}
+            </p>
+            <input
+              autoFocus
+              type="password"
+              placeholder="Password..."
+              value={quickConnectPassword}
+              onChange={e => setQuickConnectPassword(e.target.value)}
+              style={{ padding: '8px', border: '1px solid #ccc', borderRadius: '4px', marginBottom: '16px', outline: 'none' }}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  createConnection({ ...quickConnectState, username: quickConnectState.user, password: quickConnectPassword, protocol: 'ssh' });
+                  setQuickConnectState(null);
+                } else if (e.key === 'Escape') {
+                  setQuickConnectState(null);
+                }
+              }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <button onClick={() => setQuickConnectState(null)} style={{ padding: '6px 16px', border: '1px solid #ccc', background: '#fff', cursor: 'pointer', borderRadius: '4px' }}>Cancel</button>
+              <button 
+                onClick={() => {
+                  createConnection({ ...quickConnectState, username: quickConnectState.user, password: quickConnectPassword, protocol: 'ssh' });
+                  setQuickConnectState(null);
+                }} 
+                style={{ padding: '6px 16px', border: 'none', background: '#005a9e', color: '#fff', cursor: 'pointer', borderRadius: '4px' }}
+              >
+                Connect
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Terminal content area */}
+      {activeTab && !isFTPConnection && (
               <div style={{ flex: 1, position: 'relative', overflow: 'hidden', padding: '4px' }}>
-                {activeTab.ws ? (
+                {(activeTab.ws || activeTab.protocol === 'serial') ? (
                   activeTab.protocol !== 'sftp' ? (
-                    <TerminalComponent ws={activeTab.ws} tabId={activeTab.id} />
+                    <TerminalComponent tab={activeTab} />
                   ) : (
                     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#aaa', flexDirection: 'column', backgroundColor: '#1e1e1e' }}>
                       <FileText size={48} style={{ marginBottom: '16px', opacity: 0.3 }} />
