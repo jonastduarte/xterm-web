@@ -25,7 +25,8 @@ import {
   FileText,
   HardDrive,
   Plus,
-  Globe
+  Globe,
+  Lock
 } from 'lucide-react';
 
 interface MainLayoutProps {
@@ -48,8 +49,69 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username }) =
   const [showSftpPanel, setShowSftpPanel] = useState(true);
   const [quickConnectState, setQuickConnectState] = useState<{ host: string; user: string; port: number; name: string } | null>(null);
   const [quickConnectPassword, setQuickConnectPassword] = useState('');
+  const [hasVault, setHasVault] = useState(false);
+  const [masterPassword, setMasterPassword] = useState<string | null>(null);
+  const [isVaultModalOpen, setVaultModalOpen] = useState(false);
+  const [vaultModalCallback, setVaultModalCallback] = useState<{ resolve: (pass: string) => void, reject: () => void } | null>(null);
+  const [vaultActionType, setVaultActionType] = useState<'unlock' | 'setup'>('unlock');
+  const [vaultError, setVaultError] = useState('');
+  const [vaultPasswordInput, setVaultPasswordInput] = useState('');
 
   const activeTab = tabs.find(t => t.id === activeTabId) || null;
+
+  useEffect(() => {
+    fetch(`${apiUrl}/api/vault/status`)
+      .then(r => r.json())
+      .then(data => setHasVault(data.hasVault))
+      .catch(() => {});
+  }, [apiUrl]);
+
+  const promptMasterPassword = (type: 'unlock' | 'setup' = 'unlock'): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      if (type === 'unlock' && masterPassword) {
+        resolve(masterPassword);
+        return;
+      }
+      setVaultActionType(type);
+      setVaultPasswordInput('');
+      setVaultError('');
+      setVaultModalOpen(true);
+      setVaultModalCallback({ resolve, reject });
+    });
+  };
+
+  const handleVaultSubmit = async () => {
+    if (vaultActionType === 'setup') {
+      try {
+        const res = await fetch(`${apiUrl}/api/vault/setup`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ masterPassword: vaultPasswordInput })
+        });
+        if (!res.ok) throw new Error(await res.text());
+        setMasterPassword(vaultPasswordInput);
+        setHasVault(true);
+        setVaultModalOpen(false);
+        vaultModalCallback?.resolve(vaultPasswordInput);
+      } catch (err: any) { setVaultError(err.message); }
+    } else {
+      try {
+        const res = await fetch(`${apiUrl}/api/vault/verify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ masterPassword: vaultPasswordInput })
+        });
+        const data = await res.json();
+        if (data.valid) {
+          setMasterPassword(vaultPasswordInput);
+          setVaultModalOpen(false);
+          vaultModalCallback?.resolve(vaultPasswordInput);
+        } else {
+          setVaultError('Invalid master password');
+        }
+      } catch (err: any) { setVaultError('Connection error'); }
+    }
+  };
 
   const createConnection = useCallback((session: any) => {
     const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:3000';
@@ -79,6 +141,16 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username }) =
     };
 
     getCredentials().then(async realSession => {
+      let currentMasterPass = masterPassword;
+      if (hasVault && realSession.id && !currentMasterPass && realSession.password) {
+        try {
+          currentMasterPass = await promptMasterPassword('unlock');
+        } catch {
+          setTabs(prev => prev.filter(t => t.id !== tabId));
+          return;
+        }
+      }
+
       // Auto-save session if it doesn't have an ID (e.g. Quick Connect)
       if (!realSession.id) {
         try {
@@ -88,7 +160,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username }) =
             body: JSON.stringify({
               ...realSession,
               name: realSession.name || `${realSession.host}${realSession.port ? ':' + realSession.port : ''}`,
-              protocol: realSession.protocol || 'ssh'
+              protocol: realSession.protocol || 'ssh',
+              masterPassword: currentMasterPass
             })
           });
           if (saveResponse.ok) {
@@ -108,7 +181,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username }) =
       websocket.onopen = () => {
         websocket.send(JSON.stringify({
           type: 'connect',
-          payload: { ...realSession, protocol }
+          payload: { ...realSession, protocol, masterPassword: currentMasterPass }
         }));
         setTabs(prev => prev.map(t =>
           t.id === tabId ? { ...t, ws: websocket, session: realSession } : t
@@ -147,17 +220,26 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username }) =
   const handleSaveSession = async (sessionData: any, mode: 'create' | 'edit') => {
     setSessionDialogOpen(false);
     
+    let currentMasterPass = masterPassword;
+    if (hasVault && !currentMasterPass) {
+       try {
+         currentMasterPass = await promptMasterPassword('unlock');
+       } catch { return; }
+    }
+
+    const body = { ...sessionData, masterPassword: currentMasterPass };
+
     if (mode === 'edit' && sessionData.id) {
       await fetch(`${apiUrl}/api/sessions/${sessionData.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(sessionData)
+        body: JSON.stringify(body)
       });
     } else {
       await fetch(`${apiUrl}/api/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(sessionData)
+        body: JSON.stringify(body)
       });
     }
     // Trigger refresh in SessionTree
@@ -314,6 +396,29 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username }) =
                       </li>
                     ))}
                   </ul>
+
+                  <b style={{ marginTop: '20px', marginBottom: '8px', display: 'block', color: '#1a1a1a' }}>Security & Vault</b>
+                  <div style={{ padding: '10px', backgroundColor: '#f9f9f9', borderRadius: '6px', border: '1px solid #eee' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                      <Lock size={16} color={hasVault ? '#27ae60' : '#7f8c8d'} />
+                      <span style={{ fontWeight: '500' }}>Password Vault: {hasVault ? 'Active' : 'Disabled'}</span>
+                    </div>
+                    {!hasVault ? (
+                      <button 
+                        onClick={() => promptMasterPassword('setup')}
+                        style={{ padding: '6px 12px', width: '100%', cursor: 'pointer', backgroundColor: '#005a9e', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '11px' }}
+                      >
+                        Enable Vault
+                      </button>
+                    ) : (
+                      <button 
+                        onClick={() => { setMasterPassword(null); alert('Vault locked for this session.'); }}
+                        style={{ padding: '6px 12px', width: '100%', cursor: 'pointer', backgroundColor: '#fff', color: '#333', border: '1px solid #ccc', borderRadius: '4px', fontSize: '11px' }}
+                      >
+                        Lock Vault
+                      </button>
+                    )}
+                  </div>
                 </div>
              )}
              
@@ -455,6 +560,56 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username }) =
         </div>
       )}
       
+      {/* Vault Password Modal */}
+      {isVaultModalOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1200 }}>
+          <div style={{ width: '350px', backgroundColor: '#fff', borderRadius: '8px', boxShadow: '0 8px 32px rgba(0,0,0,0.3)', padding: '24px', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+              <Lock size={20} color="#005a9e" />
+              <h4 style={{ margin: 0, color: '#333', fontSize: '16px' }}>
+                {vaultActionType === 'setup' ? 'Setup Password Vault' : 'Unlock Password Vault'}
+              </h4>
+            </div>
+            
+            <p style={{ margin: '0 0 20px 0', color: '#666', fontSize: '12px', lineHeight: '1.4' }}>
+              {vaultActionType === 'setup' 
+                ? 'Create a master password to encrypt your session credentials. This password will never be stored in plain text.' 
+                : 'Enter your master password to decrypt session credentials and connect.'}
+            </p>
+
+            <input
+              autoFocus
+              type="password"
+              placeholder="Master Password..."
+              value={vaultPasswordInput}
+              onChange={e => setVaultPasswordInput(e.target.value)}
+              style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '4px', marginBottom: '8px', outline: 'none', fontSize: '14px' }}
+              onKeyDown={e => {
+                if (e.key === 'Enter') handleVaultSubmit();
+                if (e.key === 'Escape') { setVaultModalOpen(false); vaultModalCallback?.reject(); }
+              }}
+            />
+            
+            {vaultError && <p style={{ color: '#d93025', fontSize: '11px', margin: '4px 0 12px 0' }}>{vaultError}</p>}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '12px' }}>
+              <button 
+                onClick={() => { setVaultModalOpen(false); vaultModalCallback?.reject(); }} 
+                style={{ padding: '8px 16px', border: '1px solid #ccc', background: '#fff', cursor: 'pointer', borderRadius: '4px', fontSize: '13px' }}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={handleVaultSubmit} 
+                style={{ padding: '8px 20px', border: 'none', background: '#005a9e', color: '#fff', cursor: 'pointer', borderRadius: '4px', fontSize: '13px', fontWeight: '500' }}
+              >
+                {vaultActionType === 'setup' ? 'Setup Vault' : 'Unlock'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Quick Connect Password Modal */}
       {quickConnectState && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1100 }}>

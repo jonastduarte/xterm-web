@@ -87,10 +87,14 @@ app.get('/api/sessions', async (req, res) => {
 
 app.post('/api/sessions', async (req, res) => {
   try {
-    const { name, host, port, username, password, folder_id, protocol, auth_type, private_key, use_sftp } = req.body;
+    const { name, host, port, username, password, folder_id, protocol, auth_type, private_key, use_sftp, masterPassword } = req.body;
+    let finalPassword = password || '';
+    if (finalPassword && masterPassword) {
+      finalPassword = encrypt(finalPassword, masterPassword);
+    }
     const result = await dbRun(
       'INSERT INTO sessions (name, host, port, username, password, folder_id, protocol, auth_type, private_key, use_sftp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [name || host, host, port || 22, username, password || '', folder_id || null, protocol || 'ssh', auth_type || 'password', private_key || null, use_sftp !== undefined ? use_sftp : 1]
+      [name || host, host, port || 22, username, finalPassword, folder_id || null, protocol || 'ssh', auth_type || 'password', private_key || null, use_sftp !== undefined ? use_sftp : 1]
     );
     res.json({ id: result.lastID, message: 'Session saved' });
   } catch (err: any) { res.status(500).json({ error: err.message }); }
@@ -98,7 +102,7 @@ app.post('/api/sessions', async (req, res) => {
 
 app.put('/api/sessions/:id', async (req, res) => {
   try {
-    const { name, host, port, username, password, folder_id, protocol, auth_type, private_key, use_sftp } = req.body;
+    const { name, host, port, username, password, folder_id, protocol, auth_type, private_key, use_sftp, masterPassword } = req.body;
     // update folder only if that's the intention
     if (folder_id !== undefined && !host) {
       await dbRun('UPDATE sessions SET folder_id = ? WHERE id = ?', [folder_id, req.params.id]);
@@ -108,6 +112,8 @@ app.put('/api/sessions/:id', async (req, res) => {
       if (password === '***' || password === undefined) {
         const existing = await dbQuery('SELECT password FROM sessions WHERE id = ?', [req.params.id]);
         finalPassword = existing[0]?.password || '';
+      } else if (finalPassword && masterPassword) {
+        finalPassword = encrypt(finalPassword, masterPassword);
       }
       await dbRun(
         'UPDATE sessions SET name=?, host=?, port=?, username=?, password=?, folder_id=?, protocol=?, auth_type=?, private_key=?, use_sftp=? WHERE id=?',
