@@ -288,7 +288,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
   const renderTerminalPane = (tab: TabSession | null) => {
     if (!tab) {
       return (
-        <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#555', backgroundColor: '#1e1e1e', border: '1px solid #333' }}>
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#555', backgroundColor: '#1e1e1e', border: '1px solid #333', minWidth: 0, minHeight: 0 }}>
           Empty Pane
         </div>
       );
@@ -303,7 +303,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
           overflow: 'hidden', 
           padding: '2px',
           border: isActive && splitMode !== 'single' ? '1px solid #3498db' : '1px solid #333',
-          display: 'flex'
+          display: 'flex',
+          minWidth: 0,
+          minHeight: 0
         }}>
         {(tab.ws || tab.protocol === 'serial') ? (
           tab.protocol !== 'sftp' ? (
@@ -749,26 +751,26 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
 
       {/* Terminal content area */}
       {tabs.filter(t => t.protocol !== 'ftp').length > 0 && !isFTPConnection && (
-        <div style={{ flex: 1, display: 'flex', overflow: 'hidden', padding: '4px', gap: '4px' }}>
+        <div style={{ flex: 1, display: 'flex', overflow: 'hidden', padding: '4px', gap: '4px', minWidth: 0, minHeight: 0 }}>
           {splitMode === 'single' ? (
             renderTerminalPane(panes[0])
           ) : splitMode === 'vertical' ? (
-            <div style={{ display: 'flex', flexDirection: 'row', flex: 1, gap: '4px' }}>
+            <div style={{ display: 'flex', flexDirection: 'row', flex: 1, gap: '4px', minWidth: 0, minHeight: 0 }}>
               {renderTerminalPane(panes[0])}
               {renderTerminalPane(panes[1])}
             </div>
           ) : splitMode === 'horizontal' ? (
-            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: '4px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: '4px', minWidth: 0, minHeight: 0 }}>
               {renderTerminalPane(panes[0])}
               {renderTerminalPane(panes[1])}
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: '4px' }}>
-              <div style={{ display: 'flex', flexDirection: 'row', flex: 1, gap: '4px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: '4px', minWidth: 0, minHeight: 0 }}>
+              <div style={{ display: 'flex', flexDirection: 'row', flex: 1, gap: '4px', minWidth: 0, minHeight: 0 }}>
                 {renderTerminalPane(panes[0])}
                 {renderTerminalPane(panes[1])}
               </div>
-              <div style={{ display: 'flex', flexDirection: 'row', flex: 1, gap: '4px' }}>
+              <div style={{ display: 'flex', flexDirection: 'row', flex: 1, gap: '4px', minWidth: 0, minHeight: 0 }}>
                 {renderTerminalPane(panes[2])}
                 {renderTerminalPane(panes[3])}
               </div>
