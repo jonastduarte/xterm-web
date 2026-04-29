@@ -63,6 +63,12 @@ function decodeToken(token: string) {
   } catch { return null; }
 }
 
+function stripAnsi(data: Buffer | string): string {
+  const str = data.toString('utf-8');
+  // Strip ANSI escape codes
+  return str.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, '');
+}
+
 app.post('/api/auth/login', async (req, res) => {
   const { username, password } = req.body;
   try {
@@ -733,7 +739,7 @@ wss.on('connection', (ws: WebSocket) => {
         });
 
         telnetSocket.on('data', (d: Buffer) => {
-          if (logStream) logStream.write(d);
+          if (logStream) logStream.write(stripAnsi(d));
           ws.send(JSON.stringify({ type: 'data', payload: d.toString('utf-8') }));
         });
 
@@ -787,7 +793,7 @@ wss.on('connection', (ws: WebSocket) => {
 
             // Handle shell output
             stream.on('data', (d: any) => {
-              if (logStream) logStream.write(d);
+              if (logStream) logStream.write(stripAnsi(d));
               ws.send(JSON.stringify({ type: 'data', payload: d.toString('utf-8') }));
             }).on('close', () => {
               ssh.end();
