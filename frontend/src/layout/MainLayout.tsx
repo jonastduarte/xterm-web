@@ -48,6 +48,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
   const [sidebarTab, setSidebarTab] = useState<'sessions' | 'tools' | 'macros' | 'sftp' | 'users' | 'logs'>('sessions');
   const [tabs, setTabs] = useState<TabSession[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
+  const [splitMode, setSplitMode] = useState<'single' | 'vertical' | 'horizontal' | 'grid'>('single');
+  const [splitDropdownOpen, setSplitDropdownOpen] = useState(false);
   const [isSessionDialogOpen, setSessionDialogOpen] = useState(false);
   const [editingSession, setEditingSession] = useState<any>(null);
   const [sessionDialogMode, setSessionDialogMode] = useState<'create'|'edit'|'clone'>('create');
@@ -265,6 +267,63 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
   const isFTPConnection = activeTab?.protocol === 'ftp';
   const isTelnetConnection = activeTab?.protocol === 'telnet';
 
+  const getPanes = (count: number) => {
+    let p = [...tabs].filter(t => t.protocol !== 'ftp');
+    const activeIdx = p.findIndex(t => t.id === activeTabId);
+    if (activeIdx >= count && p.length > 0) {
+      const temp = p[0];
+      p[0] = p[activeIdx];
+      p[activeIdx] = temp;
+    }
+    const result = p.slice(0, count);
+    while (result.length < count) result.push(null as any);
+    return result;
+  };
+
+  let panes: (TabSession | null)[] = [];
+  if (splitMode === 'single') panes = [activeTab || null];
+  else if (splitMode === 'vertical' || splitMode === 'horizontal') panes = getPanes(2);
+  else if (splitMode === 'grid') panes = getPanes(4);
+
+  const renderTerminalPane = (tab: TabSession | null) => {
+    if (!tab) {
+      return (
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#555', backgroundColor: '#1e1e1e', border: '1px solid #333' }}>
+          Empty Pane
+        </div>
+      );
+    }
+    const isActive = tab.id === activeTabId;
+    return (
+      <div 
+        onClick={() => setActiveTabId(tab.id)}
+        style={{ 
+          flex: 1, 
+          position: 'relative', 
+          overflow: 'hidden', 
+          padding: '2px',
+          border: isActive && splitMode !== 'single' ? '1px solid #3498db' : '1px solid #333',
+          display: 'flex'
+        }}>
+        {(tab.ws || tab.protocol === 'serial') ? (
+          tab.protocol !== 'sftp' ? (
+            <TerminalComponent tab={tab} />
+          ) : (
+            <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#aaa', flexDirection: 'column', backgroundColor: '#1e1e1e' }}>
+              <FileText size={48} style={{ marginBottom: '16px', opacity: 0.3 }} />
+              <h3 style={{ margin: 0 }}>SFTP Session</h3>
+            </div>
+          )
+        ) : (
+          <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#aaa', flexDirection: 'column', backgroundColor: '#1e1e1e' }}>
+            <Monitor size={36} style={{ marginBottom: '12px', opacity: 0.3 }} />
+            <p style={{ fontSize: '13px' }}>Connection closed</p>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: '#F0F0F0', fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif" }}>
       
@@ -300,7 +359,17 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
         <div style={{ width: '1px', height: '36px', backgroundColor: '#d3d3d3', margin: '0 2px' }} />
         <RibbonBtn icon={<FolderOpen size={22} color="#f1c40f" />} label="Sessions" />
         <RibbonBtn icon={<Eye size={22} color="#2ecc71" />} label="View" />
-        <RibbonBtn icon={<LayoutGrid size={22} color="#3498db" />} label="Split" />
+        <div style={{ position: 'relative' }}>
+          <RibbonBtn icon={<LayoutGrid size={22} color="#3498db" />} label="Split" onClick={() => setSplitDropdownOpen(!splitDropdownOpen)} />
+          {splitDropdownOpen && (
+            <div style={{ position: 'absolute', top: '100%', left: 0, backgroundColor: '#fff', border: '1px solid #ccc', boxShadow: '0 4px 12px rgba(0,0,0,0.2)', zIndex: 1000, display: 'flex', flexDirection: 'column', minWidth: '180px' }}>
+              <div style={splitMenuItemStyle} onClick={() => { setSplitMode('single'); setSplitDropdownOpen(false); }}>Single terminal mode</div>
+              <div style={splitMenuItemStyle} onClick={() => { setSplitMode('vertical'); setSplitDropdownOpen(false); }}>2 terminals mode (vertical split)</div>
+              <div style={splitMenuItemStyle} onClick={() => { setSplitMode('horizontal'); setSplitDropdownOpen(false); }}>2 terminals mode (horizontal split)</div>
+              <div style={splitMenuItemStyle} onClick={() => { setSplitMode('grid'); setSplitDropdownOpen(false); }}>4 terminals mode</div>
+            </div>
+          )}
+        </div>
         <RibbonBtn icon={<Share2 size={22} color="#9b59b6" />} label="MultiExec" />
         <RibbonBtn icon={<SlidersHorizontal size={22} color="#34495e" />} label="Tunneling" />
         <RibbonBtn icon={<Settings size={22} color="#95a5a6" />} label="Settings" />
@@ -679,28 +748,34 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
       )}
 
       {/* Terminal content area */}
-      {activeTab && !isFTPConnection && (
-              <div style={{ flex: 1, position: 'relative', overflow: 'hidden', padding: '4px' }}>
-                {(activeTab.ws || activeTab.protocol === 'serial') ? (
-                  activeTab.protocol !== 'sftp' ? (
-                    <TerminalComponent tab={activeTab} />
-                  ) : (
-                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#aaa', flexDirection: 'column', backgroundColor: '#1e1e1e' }}>
-                      <FileText size={48} style={{ marginBottom: '16px', opacity: 0.3 }} />
-                      <h3 style={{ margin: 0 }}>SFTP Session</h3>
-                      <p style={{ maxWidth: '300px', textAlign: 'center', lineHeight: '1.4', fontSize: '13px', opacity: 0.6 }}>
-                        Use the file browser on the left to navigate, upload, and download files.
-                      </p>
-                    </div>
-                  )
-                ) : (
-                  <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#aaa', flexDirection: 'column', backgroundColor: '#1e1e1e' }}>
-                    <Monitor size={36} style={{ marginBottom: '12px', opacity: 0.3 }} />
-                    <p style={{ fontSize: '13px' }}>Connection closed</p>
-                  </div>
-                )}
+      {tabs.filter(t => t.protocol !== 'ftp').length > 0 && !isFTPConnection && (
+        <div style={{ flex: 1, display: 'flex', overflow: 'hidden', padding: '4px', gap: '4px' }}>
+          {splitMode === 'single' ? (
+            renderTerminalPane(panes[0])
+          ) : splitMode === 'vertical' ? (
+            <div style={{ display: 'flex', flexDirection: 'row', flex: 1, gap: '4px' }}>
+              {renderTerminalPane(panes[0])}
+              {renderTerminalPane(panes[1])}
+            </div>
+          ) : splitMode === 'horizontal' ? (
+            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: '4px' }}>
+              {renderTerminalPane(panes[0])}
+              {renderTerminalPane(panes[1])}
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: '4px' }}>
+              <div style={{ display: 'flex', flexDirection: 'row', flex: 1, gap: '4px' }}>
+                {renderTerminalPane(panes[0])}
+                {renderTerminalPane(panes[1])}
               </div>
-            )}
+              <div style={{ display: 'flex', flexDirection: 'row', flex: 1, gap: '4px' }}>
+                {renderTerminalPane(panes[2])}
+                {renderTerminalPane(panes[3])}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
             {/* Welcome screen when no tabs */}
             {!activeTab && (
@@ -784,6 +859,14 @@ const VerticalTab = ({ icon, label, isActive, onClick, color }: { icon: React.Re
 );
 
 const menuItemStyle: React.CSSProperties = { cursor: 'pointer', padding: '2px 4px', color: '#1a1a1a' };
+
+const splitMenuItemStyle: React.CSSProperties = {
+  padding: '8px 12px',
+  cursor: 'pointer',
+  fontSize: '12px',
+  color: '#333',
+  borderBottom: '1px solid #f0f0f0'
+};
 
 const btnSmallStyle: React.CSSProperties = {
   display: 'flex', alignItems: 'center', gap: '6px', background: '#fff',
