@@ -127,14 +127,25 @@ const SessionTree: React.FC<SessionTreeProps> = ({ apiUrl, onConnect, onEdit, on
   const handleImport = () => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.json';
+    input.accept = '.json,.mobaconf';
     input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
       const reader = new FileReader();
       reader.onload = () => {
+        let data: any = null;
         try {
-          const data = JSON.parse(reader.result as string);
+          if (file.name.endsWith('.mobaconf')) {
+            data = parseMobaConf(reader.result as string);
+          } else {
+            data = JSON.parse(reader.result as string);
+          }
+        } catch (err: any) { 
+          alert('Invalid file format: ' + err.message); 
+          return; 
+        }
+
+        if (data) {
           fetch(`${apiUrl}/api/sessions/import`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -143,11 +154,84 @@ const SessionTree: React.FC<SessionTreeProps> = ({ apiUrl, onConnect, onEdit, on
             refreshData();
             alert('Sessions imported successfully!');
           });
-        } catch { alert('Invalid JSON file'); }
+        }
       };
       reader.readAsText(file);
     };
     input.click();
+  };
+
+  const parseMobaConf = (text: string) => {
+    const lines = text.split('\n');
+    const importFolders: any[] = [];
+    const importSessions: any[] = [];
+    const folderMap: Record<string, number> = {};
+    let currentFolderId: number | null = null;
+    let currentFolderPath: string | undefined = undefined;
+    let folderCounter = 1;
+
+    for (let line of lines) {
+      line = line.trim();
+      if (!line || line.startsWith(';')) continue;
+      
+      if (line.startsWith('[Bookmarks')) {
+         currentFolderPath = '';
+         currentFolderId = null;
+      } else if (line.startsWith('[')) {
+         currentFolderPath = undefined;
+         currentFolderId = null;
+      } else if (line.startsWith('SubRep=')) {
+         currentFolderPath = line.substring(7).trim();
+         if (currentFolderPath) {
+           const parts = currentFolderPath.split('\\');
+           let currentPath = '';
+           let parentId: number | null = null;
+           for (const part of parts) {
+             currentPath = currentPath ? currentPath + '\\' + part : part;
+             if (!folderMap[currentPath]) {
+               folderMap[currentPath] = folderCounter++;
+               importFolders.push({ id: folderMap[currentPath], name: part, parent_id: parentId });
+             }
+             parentId = folderMap[currentPath];
+           }
+           currentFolderId = folderMap[currentFolderPath];
+         }
+      } else if (line.includes('=#') && currentFolderPath !== undefined) {
+         const eqIdx = line.indexOf('=');
+         const name = line.substring(0, eqIdx).trim();
+         const val = line.substring(eqIdx + 1).trim();
+         if (val.startsWith('#')) {
+           const parts = val.split('%');
+           if (parts.length >= 4) {
+             let host = parts[1];
+             const port = parseInt(parts[2]) || 22;
+             let username = parts[3] || 'root';
+             
+             if (host.includes('@')) {
+                 const hostParts = host.split('@');
+                 host = hostParts[hostParts.length - 1];
+                 if (hostParts.length >= 2) username = hostParts[hostParts.length - 2];
+             }
+
+             let protocol = 'ssh';
+             if (val.startsWith('#98#')) protocol = 'telnet';
+             else if (val.startsWith('#83#')) protocol = 'sftp';
+             else if (val.startsWith('#105#')) protocol = 'ftp';
+             else if (val.startsWith('#131#')) protocol = 'serial';
+             
+             importSessions.push({
+               name: name,
+               host: host,
+               port: port,
+               username: username,
+               protocol: protocol,
+               folder_id: currentFolderId
+             });
+           }
+         }
+      }
+    }
+    return { folders: importFolders, sessions: importSessions };
   };
 
   const deleteSession = (e: React.MouseEvent, id: number) => {
