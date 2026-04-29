@@ -101,7 +101,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ apiUrl, role, currentUs
           {users.map(u => (
             <div key={u.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px', background: '#f5f6f7', borderRadius: '6px', border: '1px solid #e0e0e0' }}>
               <div>
-                <div style={{ fontWeight: '600' }}>{u.username}</div>
+                <div style={{ fontWeight: '600', color: '#333' }}>{u.username}</div>
                 <div style={{ fontSize: '11px', color: '#7f8c8d' }}>Role: {u.role}</div>
               </div>
               <div style={{ display: 'flex', gap: '4px' }}>
@@ -118,7 +118,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ apiUrl, role, currentUs
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
           <div style={{ background: '#fff', padding: '20px', borderRadius: '8px', width: '300px', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '16px' }}>
+              <h3 style={{ margin: 0, fontSize: '16px', color: '#333' }}>
                 {dialog.mode === 'create' ? 'New User' : dialog.mode === 'edit' ? 'Edit User' : 'Change Password'}
               </h3>
               <button onClick={closeDialog} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X size={18} color="#7f8c8d" /></button>
@@ -127,21 +127,21 @@ const UserManagement: React.FC<UserManagementProps> = ({ apiUrl, role, currentUs
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {(dialog.mode === 'create' || dialog.mode === 'edit') && (
                 <div>
-                  <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px' }}>Username</label>
+                  <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', color: '#555' }}>Username</label>
                   <input type="text" value={form.username} onChange={e => setForm({...form, username: e.target.value})} required style={inputStyle} />
                 </div>
               )}
               
               {(dialog.mode === 'create' || dialog.mode === 'password') && (
                 <div>
-                  <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px' }}>{dialog.mode === 'password' ? 'New Password' : 'Password'}</label>
+                  <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', color: '#555' }}>{dialog.mode === 'password' ? 'New Password' : 'Password'}</label>
                   <input type="password" value={form.password} onChange={e => setForm({...form, password: e.target.value})} required={dialog.mode === 'create'} style={inputStyle} />
                 </div>
               )}
 
               {role === 'admin' && (dialog.mode === 'create' || dialog.mode === 'edit') && (
                 <div>
-                  <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px' }}>Role</label>
+                  <label style={{ display: 'block', fontSize: '11px', marginBottom: '4px', color: '#555' }}>Role</label>
                   <select value={form.role} onChange={e => setForm({...form, role: e.target.value})} style={inputStyle}>
                     <option value="user">User</option>
                     <option value="admin">Admin</option>
@@ -161,6 +161,6 @@ const UserManagement: React.FC<UserManagementProps> = ({ apiUrl, role, currentUs
 };
 
 const iconBtnStyle = { background: 'none', border: 'none', cursor: 'pointer', padding: '4px' };
-const inputStyle = { width: '100%', padding: '6px 8px', borderRadius: '4px', border: '1px solid #ccc', outline: 'none', boxSizing: 'border-box' as any };
+const inputStyle = { width: '100%', padding: '6px 8px', borderRadius: '4px', border: '1px solid #ccc', outline: 'none', boxSizing: 'border-box' as any, color: '#333', backgroundColor: '#fff' };
 
 export default UserManagement;
