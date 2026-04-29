@@ -413,6 +413,32 @@ app.get('/api/logs/download/:filename', (req, res) => {
   res.download(filePath);
 });
 
+app.get('/api/logs/view/:filename', async (req, res) => {
+  const userId = (req as any).user.id;
+  const safeFilename = path.basename(req.params.filename);
+  const filePath = path.join(sessionLogsDir, String(userId), safeFilename);
+  if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Log not found' });
+  
+  const lines: string[] = [];
+  let isTruncated = false;
+  
+  const rl = require('readline').createInterface({
+    input: fs.createReadStream(filePath),
+    crlfDelay: Infinity
+  });
+
+  for await (const line of rl) {
+    if (lines.length >= 1000) {
+      isTruncated = true;
+      rl.close();
+      break;
+    }
+    lines.push(line);
+  }
+
+  res.json({ content: lines.join('\n'), isTruncated });
+});
+
 // ===== Settings =====
 app.get('/api/settings', async (req, res) => {
   try {

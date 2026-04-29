@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Trash2, FileText, X } from 'lucide-react';
+import { Download, Trash2, FileText, X, Eye, Search } from 'lucide-react';
 
 interface SessionLogsProps {
   apiUrl: string;
@@ -8,6 +8,8 @@ interface SessionLogsProps {
 const SessionLogs: React.FC<SessionLogsProps> = ({ apiUrl }) => {
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [viewingLog, setViewingLog] = useState<{ name: string, content: string, isTruncated: boolean } | null>(null);
 
   useEffect(() => {
     fetchLogs();
@@ -22,6 +24,17 @@ const SessionLogs: React.FC<SessionLogsProps> = ({ apiUrl }) => {
       }
     } catch (err) {}
     setLoading(false);
+  };
+
+  const handleViewLog = async (filename: string) => {
+    try {
+      const res = await fetch(`${apiUrl}/api/logs/view/${filename}`);
+      if (!res.ok) throw new Error('Failed to view log');
+      const data = await res.json();
+      setViewingLog({ name: filename, content: data.content, isTruncated: data.isTruncated });
+    } catch (err: any) {
+      alert(err.message);
+    }
   };
 
   const handleDownload = (filename: string) => {
@@ -53,21 +66,37 @@ const SessionLogs: React.FC<SessionLogsProps> = ({ apiUrl }) => {
     else return (bytes / 1048576).toFixed(1) + ' MB';
   };
 
+  const filteredLogs = logs.filter(l => 
+    l.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    new Date(l.mtime).toLocaleString().includes(searchTerm)
+  );
+
   return (
     <div style={{ padding: '12px', fontSize: '13px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
         <b style={{ color: '#1a1a1a' }}>Session Logs</b>
       </div>
       
-      <p style={{ fontSize: '11px', color: '#666', marginBottom: '16px', lineHeight: 1.4 }}>
+      <p style={{ fontSize: '11px', color: '#666', marginBottom: '12px', lineHeight: 1.4 }}>
         Terminal sessions are automatically recorded here. Logs are kept for 30 days.
       </p>
 
-      {loading ? <p>Loading...</p> : logs.length === 0 ? (
+      <div style={{ marginBottom: '12px', position: 'relative' }}>
+        <input 
+          type="text" 
+          placeholder="Search logs by name or date..." 
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+          style={{ width: '100%', padding: '6px 8px 6px 28px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box' }}
+        />
+        <Search size={14} color="#888" style={{ position: 'absolute', left: '8px', top: '8px' }} />
+      </div>
+
+      {loading ? <p>Loading...</p> : filteredLogs.length === 0 ? (
         <p style={{ color: '#888', fontStyle: 'italic', textAlign: 'center', marginTop: '20px' }}>No logs found.</p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {logs.map(log => (
+          {filteredLogs.map(log => (
             <div key={log.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px', background: '#f5f6f7', borderRadius: '6px', border: '1px solid #e0e0e0' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', overflow: 'hidden' }}>
                 <FileText size={16} color="#7f8c8d" style={{ flexShrink: 0 }} />
@@ -79,12 +108,47 @@ const SessionLogs: React.FC<SessionLogsProps> = ({ apiUrl }) => {
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                <button onClick={() => handleViewLog(log.name)} title="View Log" style={iconBtnStyle}>
+                  <Eye size={14} color="#2ecc71" />
+                </button>
                 <button onClick={() => handleDownload(log.name)} title="Download Log" style={iconBtnStyle}>
                   <Download size={14} color="#3498db" />
                 </button>
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {viewingLog && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
+          <div style={{ backgroundColor: '#fff', width: '80%', height: '80%', borderRadius: '8px', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }}>
+            <div style={{ padding: '12px 16px', borderBottom: '1px solid #ccc', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8f9fa' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <FileText size={18} color="#7f8c8d" />
+                <h3 style={{ margin: 0, fontSize: '15px', color: '#333' }}>{viewingLog.name}</h3>
+              </div>
+              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                <button onClick={() => handleDownload(viewingLog.name)} style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid #3498db', background: 'transparent', color: '#3498db', padding: '4px 12px', borderRadius: '4px', cursor: 'pointer' }}>
+                  <Download size={14} /> Download File
+                </button>
+                <button onClick={() => setViewingLog(null)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                  <X size={20} color="#7f8c8d" />
+                </button>
+              </div>
+            </div>
+            
+            {viewingLog.isTruncated && (
+              <div style={{ padding: '10px 16px', backgroundColor: '#fff3cd', color: '#856404', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid #ffeeba' }}>
+                <span style={{ fontSize: '16px' }}>⚠️</span>
+                <span>This log file exceeds 1000 lines. The preview has been truncated for performance. Please download the file to view the complete log.</span>
+              </div>
+            )}
+            
+            <div style={{ flex: 1, overflow: 'auto', padding: '16px', backgroundColor: '#1e1e1e', color: '#d4d4d4', fontFamily: 'monospace', fontSize: '13px', whiteSpace: 'pre-wrap' }}>
+              {viewingLog.content}
+            </div>
+          </div>
         </div>
       )}
     </div>
