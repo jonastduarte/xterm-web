@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import 'xterm/css/xterm.css';
@@ -16,6 +16,8 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ tab }) => {
   const initializedRef = useRef(false);
   const serialPortRef = useRef<any>(null);
   const serialReaderRef = useRef<any>(null);
+  const [pasteModalOpen, setPasteModalOpen] = useState(false);
+  const [pasteContent, setPasteContent] = useState('');
 
   useEffect(() => {
     if (!terminalRef.current || initializedRef.current) return;
@@ -140,6 +142,30 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ tab }) => {
       }
     });
 
+    term.onSelectionChange(() => {
+      const selection = term.getSelection();
+      if (selection) {
+        navigator.clipboard.writeText(selection).catch(() => {});
+      }
+    });
+
+    const handleContextMenu = async (e: MouseEvent) => {
+      e.preventDefault();
+      try {
+        const text = await navigator.clipboard.readText();
+        if (text) {
+          setPasteContent(text);
+          setPasteModalOpen(true);
+        }
+      } catch (err) {
+        console.error('Failed to read clipboard', err);
+      }
+    };
+
+    if (terminalRef.current) {
+      terminalRef.current.addEventListener('contextmenu', handleContextMenu);
+    }
+
     window.addEventListener('resize', safeFit);
 
     const resizeObserver = new ResizeObserver(() => safeFit());
@@ -149,6 +175,12 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ tab }) => {
 
     return () => {
       initializedRef.current = false;
+      
+      const termEl = terminalRef.current;
+      if (termEl) {
+        termEl.removeEventListener('contextmenu', handleContextMenu);
+      }
+      
       window.removeEventListener('resize', safeFit);
       resizeObserver.disconnect();
       if (ws) ws.removeEventListener('message', handleMessage);
@@ -167,11 +199,55 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ tab }) => {
     };
   }, [ws, protocol, session]);
 
+  const handlePasteConfirm = () => {
+    if (termRef.current) {
+      if (protocol === 'serial' && serialPortRef.current?.writable) {
+        const writer = serialPortRef.current.writable.getWriter();
+        writer.write(new TextEncoder().encode(pasteContent)).finally(() => writer.releaseLock());
+      } else if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'data', payload: pasteContent }));
+      }
+    }
+    setPasteModalOpen(false);
+  };
+
   return (
-    <div
-      ref={terminalRef}
-      style={{ width: '100%', height: '100%', overflow: 'hidden' }}
-    />
+    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+      <div
+        ref={terminalRef}
+        style={{ width: '100%', height: '100%', overflow: 'hidden' }}
+      />
+      
+      {pasteModalOpen && (
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+          <div style={{ backgroundColor: '#fff', padding: '20px', borderRadius: '8px', width: '600px', maxWidth: '90%', boxShadow: '0 4px 20px rgba(0,0,0,0.3)', color: '#333' }}>
+            <h3 style={{ margin: '0 0 10px 0', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '500' }}>
+              Warning: Please verify the paste content before proceeding
+            </h3>
+            <p style={{ fontSize: '13px', marginBottom: '12px', color: '#555' }}>
+              Please review the content that you are about to paste and make sure it is safe or modify it before proceeding:
+            </p>
+            <textarea
+              value={pasteContent}
+              onChange={(e) => setPasteContent(e.target.value)}
+              style={{ width: '100%', height: '200px', padding: '8px', fontFamily: 'monospace', fontSize: '13px', border: '1px solid #ccc', borderRadius: '4px', resize: 'vertical', boxSizing: 'border-box' }}
+            />
+            <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'center', gap: '16px' }}>
+              <button 
+                onClick={handlePasteConfirm}
+                style={{ padding: '6px 16px', backgroundColor: '#fff', color: '#333', border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
+                <span style={{ color: '#27ae60', fontSize: '16px' }}>✔️</span> Continue
+              </button>
+              <button 
+                onClick={() => setPasteModalOpen(false)}
+                style={{ padding: '6px 16px', backgroundColor: '#fff', color: '#333', border: '1px solid #ccc', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px' }}>
+                <span style={{ color: '#e74c3c', fontSize: '16px' }}>❌</span> Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 
