@@ -5,6 +5,7 @@ import SessionTree from '../components/SessionTree';
 import TerminalComponent from '../components/Terminal';
 import SessionDialog from '../components/SessionDialog';
 import UserManagement from '../components/UserManagement';
+import SessionLogs from '../components/SessionLogs';
 import type { TabSession } from '../App';
 import { 
   TerminalSquare, 
@@ -28,7 +29,8 @@ import {
   Plus,
   Globe,
   Lock,
-  Users
+  Users,
+  Clock
 } from 'lucide-react';
 
 interface MainLayoutProps {
@@ -43,7 +45,7 @@ let tabCounter = 0;
 
 const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, role, userId }) => {
   const [sidebarWidth, setSidebarWidth] = useState(250);
-  const [sidebarTab, setSidebarTab] = useState<'sessions' | 'tools' | 'macros' | 'sftp' | 'users'>('sessions');
+  const [sidebarTab, setSidebarTab] = useState<'sessions' | 'tools' | 'macros' | 'sftp' | 'users' | 'logs'>('sessions');
   const [tabs, setTabs] = useState<TabSession[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const [isSessionDialogOpen, setSessionDialogOpen] = useState(false);
@@ -185,7 +187,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
       websocket.onopen = () => {
         websocket.send(JSON.stringify({
           type: 'connect',
-          payload: { ...realSession, protocol, masterPassword: currentMasterPass }
+          payload: { ...realSession, protocol, masterPassword: currentMasterPass, token: localStorage.getItem('moba_token') }
         }));
         setTabs(prev => prev.map(t =>
           t.id === tabId ? { ...t, ws: websocket, session: realSession } : t
@@ -342,6 +344,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
             color="#e67e22"
           />
           <VerticalTab 
+            icon={<Clock size={16} />} 
+            label="Logs" 
+            isActive={sidebarTab === 'logs'} 
+            onClick={() => setSidebarTab('logs')} 
+            color="#16a085"
+          />
+          <VerticalTab 
             icon={<Users size={16} />} 
             label="Users" 
             isActive={sidebarTab === 'users'} 
@@ -463,6 +472,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
 
              {sidebarTab === 'users' && (
                 <UserManagement apiUrl={apiUrl} role={role} currentUserId={userId} />
+             )}
+
+             {sidebarTab === 'logs' && (
+                <SessionLogs apiUrl={apiUrl} />
              )}
           </div>
         </div>

@@ -24,6 +24,29 @@ if (!fs.existsSync(uploadDir)) {
 }
 const upload = multer({ dest: uploadDir });
 
+const sessionLogsDir = os.tmpdir() + '/moba/session_logs/';
+if (!fs.existsSync(sessionLogsDir)) fs.mkdirSync(sessionLogsDir, { recursive: true });
+
+// Auto-cleanup logs older than 30 days
+setInterval(() => {
+  try {
+    const users = fs.readdirSync(sessionLogsDir);
+    const now = Date.now();
+    const thirtyDays = 30 * 24 * 60 * 60 * 1000;
+    for (const u of users) {
+      const uDir = path.join(sessionLogsDir, u);
+      if (!fs.statSync(uDir).isDirectory()) continue;
+      const logs = fs.readdirSync(uDir);
+      for (const file of logs) {
+        const filePath = path.join(uDir, file);
+        if (now - fs.statSync(filePath).mtimeMs > thirtyDays) {
+          fs.unlinkSync(filePath);
+        }
+      }
+    }
+  } catch (err) { console.error('Error cleaning up logs:', err); }
+}, 12 * 60 * 60 * 1000); // Check every 12 hours
+
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
@@ -365,6 +388,31 @@ app.delete('/api/users/:id', async (req, res) => {
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
+// ===== Session Logs Routes =====
+app.get('/api/logs', (req, res) => {
+  const userId = (req as any).user.id;
+  const logDir = path.join(sessionLogsDir, String(userId));
+  if (!fs.existsSync(logDir)) return res.json([]);
+  
+  try {
+    const files = fs.readdirSync(logDir);
+    const logs = files.map(f => {
+      const stats = fs.statSync(path.join(logDir, f));
+      return { name: f, size: stats.size, mtime: stats.mtimeMs };
+    }).sort((a, b) => b.mtime - a.mtime);
+    res.json(logs);
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/logs/download/:filename', (req, res) => {
+  const userId = (req as any).user.id;
+  const safeFilename = path.basename(req.params.filename);
+  const filePath = path.join(sessionLogsDir, String(userId), safeFilename);
+  if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Log not found' });
+  
+  res.download(filePath);
+});
+
 // ===== Settings =====
 app.get('/api/settings', async (req, res) => {
   try {
@@ -606,6 +654,7 @@ wss.on('connection', (ws: WebSocket) => {
   let shellStream: any = null;
   let sftpSession: any = null;
   let telnetSocket: net.Socket | null = null;
+  let logStream: fs.WriteStream | null = null;
 
   ws.on('message', (message: string) => {
     let data: any;
@@ -616,7 +665,23 @@ wss.on('connection', (ws: WebSocket) => {
     }
 
     if (data.type === 'connect') {
-      const { host, port, username, password, protocol } = data.payload;
+      const { host, port, username, password, protocol, token } = data.payload;
+      
+      const decoded = decodeToken(token || '');
+      const userId = decoded ? decoded.id : 1;
+      
+      const date = new Date();
+      const dd = String(date.getDate()).padStart(2, '0');
+      const mm = String(date.getMonth() + 1).padStart(2, '0');
+      const yyyy = date.getFullYear();
+      const hhmmss = String(date.getHours()).padStart(2, '0') + String(date.getMinutes()).padStart(2, '0') + String(date.getSeconds()).padStart(2, '0');
+      
+      const logDir = path.join(sessionLogsDir, String(userId));
+      if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
+      
+      const safeHost = host.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      const logFilePath = path.join(logDir, `${safeHost}_${dd}-${mm}-${yyyy}_${hhmmss}.log`);
+      logStream = fs.createWriteStream(logFilePath, { flags: 'a' });
       
       if (protocol === 'telnet') {
         // Telnet: raw TCP connection
@@ -633,6 +698,7 @@ wss.on('connection', (ws: WebSocket) => {
         });
 
         telnetSocket.on('data', (d: Buffer) => {
+          if (logStream) logStream.write(d);
           ws.send(JSON.stringify({ type: 'data', payload: d.toString('utf-8') }));
         });
 
@@ -686,6 +752,7 @@ wss.on('connection', (ws: WebSocket) => {
 
             // Handle shell output
             stream.on('data', (d: any) => {
+              if (logStream) logStream.write(d);
               ws.send(JSON.stringify({ type: 'data', payload: d.toString('utf-8') }));
             }).on('close', () => {
               ssh.end();
@@ -792,6 +859,7 @@ wss.on('connection', (ws: WebSocket) => {
   ws.on('close', () => {
     ssh.end();
     if (telnetSocket) { telnetSocket.destroy(); telnetSocket = null; }
+    if (logStream) { logStream.end(); logStream = null; }
   });
 });
 

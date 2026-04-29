@@ -48,7 +48,7 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ tab }) => {
         brightCyan: '#4ec9b0',
         brightWhite: '#e5e5e5'
       },
-      scrollback: 5000,
+      scrollback: 10000,
       convertEol: true,
       allowProposedApi: true
     });
