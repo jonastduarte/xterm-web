@@ -680,7 +680,16 @@ wss.on('connection', (ws: WebSocket) => {
       if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
       
       const safeHost = host.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-      const logFilePath = path.join(logDir, `${safeHost}_${dd}-${mm}-${yyyy}_${hhmmss}.log`);
+      
+      let baseFileName = `${safeHost}_${dd}-${mm}-${yyyy}_${hhmmss}`;
+      let logFilePath = path.join(logDir, `${baseFileName}.log`);
+      
+      let index = 1;
+      while (fs.existsSync(logFilePath)) {
+        logFilePath = path.join(logDir, `${baseFileName}_${index}.log`);
+        index++;
+      }
+      
       logStream = fs.createWriteStream(logFilePath, { flags: 'a' });
       
       if (protocol === 'telnet') {
