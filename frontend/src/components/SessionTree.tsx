@@ -219,13 +219,6 @@ const SessionTree: React.FC<SessionTreeProps> = ({ apiUrl, onConnect, onEdit, on
         {getProtocolIcon(s.protocol || 'ssh')}
         <span style={{ flex: 1, color: '#1a1a1a', fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.name || s.host}</span>
         {getProtocolBadge(s.protocol || 'ssh')}
-        {isHovered && (
-          <div style={{ display: 'flex', gap: '2px', marginLeft: '4px' }}>
-            <button onClick={(e) => { e.stopPropagation(); onEdit(s); }} style={actionBtn} title="Edit"><Edit2 size={11} /></button>
-            <button onClick={(e) => { e.stopPropagation(); onClone(s); }} style={actionBtn} title="Clone"><Copy size={11} /></button>
-            <button onClick={(e) => deleteSession(e, s.id)} style={delBtn} title="Delete"><Trash2 size={11} /></button>
-          </div>
-        )}
       </li>
     );
   };

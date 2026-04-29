@@ -131,6 +131,45 @@ app.delete('/api/sessions/:id', async (req, res) => {
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
+app.get('/api/sessions/export/all', async (req, res) => {
+  try {
+    const sessions = await dbQuery('SELECT * FROM sessions');
+    const folders = await dbQuery('SELECT * FROM folders');
+    res.json({ sessions, folders });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/sessions/import', async (req, res) => {
+  try {
+    const { sessions, folders } = req.body;
+    const folderIdMap: Record<number, number> = {};
+
+    if (folders && Array.isArray(folders)) {
+      for (const f of folders) {
+        const resFolder = await dbRun('INSERT INTO folders (name) VALUES (?)', [f.name]);
+        folderIdMap[f.id] = resFolder.lastID;
+      }
+      for (const f of folders) {
+        if (f.parent_id && folderIdMap[f.parent_id]) {
+           await dbRun('UPDATE folders SET parent_id = ? WHERE id = ?', [folderIdMap[f.parent_id], folderIdMap[f.id]]);
+        }
+      }
+    }
+
+    if (sessions && Array.isArray(sessions)) {
+      for (const s of sessions) {
+        const newFolderId = s.folder_id ? (folderIdMap[s.folder_id] || s.folder_id) : null;
+        await dbRun(
+          'INSERT INTO sessions (name, host, port, username, password, folder_id, protocol, auth_type, private_key, use_sftp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [s.name, s.host, s.port, s.username, s.password, newFolderId, s.protocol, s.auth_type, s.private_key, s.use_sftp]
+        );
+      }
+    }
+
+    res.json({ message: 'Import successful' });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
 // Get full session details (with password) for connection
 app.get('/api/sessions/:id/connect', async (req, res) => {
   try {
