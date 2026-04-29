@@ -10,6 +10,18 @@ export interface TabSession {
   label: string;
 }
 
+const originalFetch = window.fetch;
+window.fetch = async function (...args) {
+  let [resource, config] = args;
+  const token = localStorage.getItem('moba_token');
+  if (token && typeof resource === 'string' && resource.includes('/api/')) {
+    if (!config) config = {};
+    if (!config.headers) config.headers = {};
+    (config.headers as any)['Authorization'] = `Bearer ${token}`;
+  }
+  return originalFetch(resource, config);
+};
+
 function App() {
   const [token, setToken] = useState<string | null>(localStorage.getItem('moba_token'));
   const [username, setUsername] = useState<string | null>(localStorage.getItem('moba_user'));
@@ -34,11 +46,24 @@ function App() {
     return <LoginScreen onLogin={handleLogin} apiUrl={apiUrl} />;
   }
 
+  let role = 'user';
+  let userId = null;
+  if (token) {
+    try {
+      const decoded = atob(token);
+      const parts = decoded.split(':');
+      userId = parseInt(parts[0]);
+      role = parts[2];
+    } catch(e) {}
+  }
+
   return (
     <MainLayout 
       onLogout={handleLogout}
       apiUrl={apiUrl} 
       username={username}
+      role={role}
+      userId={userId}
     />
   );
 }

@@ -27,13 +27,26 @@ const upload = multer({ dest: uploadDir });
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
 
-// ===== Authentication Routes =====
+// ===== Authentication & Middleware =====
+function generateToken(user: any) {
+  return Buffer.from(`${user.id}:${user.username}:${user.role}`).toString('base64');
+}
+
+function decodeToken(token: string) {
+  try {
+    const data = Buffer.from(token, 'base64').toString('ascii');
+    const [id, username, role] = data.split(':');
+    return { id: parseInt(id), username, role };
+  } catch { return null; }
+}
+
 app.post('/api/auth/login', async (req, res) => {
   const { username, password } = req.body;
   try {
     const users = await dbQuery('SELECT * FROM users WHERE username = ? AND password = ?', [username, password]);
     if (users.length > 0) {
-      return res.json({ token: 'fake-jwt-token-123', username: users[0].username });
+      const user = users[0];
+      return res.json({ token: generateToken(user), username: user.username, role: user.role });
     }
     res.status(401).json({ error: 'Invalid credentials' });
   } catch (err: any) {
@@ -41,10 +54,26 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api/auth')) return next();
+  
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: 'No token provided' });
+  
+  const token = authHeader.split(' ')[1];
+  if (!token) return res.status(401).json({ error: 'Invalid token format' });
+
+  const decoded = decodeToken(token);
+  if (!decoded || isNaN(decoded.id)) return res.status(401).json({ error: 'Invalid token' });
+  
+  (req as any).user = decoded;
+  next();
+});
+
 // ===== Folder Management Routes =====
 app.get('/api/folders', async (req, res) => {
   try {
-    const rows = await dbQuery('SELECT * FROM folders');
+    const rows = await dbQuery('SELECT * FROM folders WHERE user_id = ?', [(req as any).user.id]);
     res.json(rows);
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
@@ -52,7 +81,7 @@ app.get('/api/folders', async (req, res) => {
 app.post('/api/folders', async (req, res) => {
   try {
     const parentId = req.body.parent_id || null;
-    const result = await dbRun('INSERT INTO folders (name, parent_id) VALUES (?, ?)', [req.body.name || 'New Folder', parentId]);
+    const result = await dbRun('INSERT INTO folders (name, parent_id, user_id) VALUES (?, ?, ?)', [req.body.name || 'New Folder', parentId, (req as any).user.id]);
     res.json({ id: result.lastID, name: req.body.name, parent_id: parentId });
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
@@ -60,19 +89,18 @@ app.post('/api/folders', async (req, res) => {
 app.put('/api/folders/:id', async (req, res) => {
   try {
     const { parent_id } = req.body;
-    // Prevent a folder from being moved into itself
     if (parseInt(req.params.id) === parent_id) {
       return res.status(400).json({ error: 'Cannot move a folder into itself' });
     }
-    await dbRun('UPDATE folders SET parent_id = ? WHERE id = ?', [parent_id !== undefined ? parent_id : null, req.params.id]);
+    await dbRun('UPDATE folders SET parent_id = ? WHERE id = ? AND user_id = ?', [parent_id !== undefined ? parent_id : null, req.params.id, (req as any).user.id]);
     res.json({ success: true });
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
 app.delete('/api/folders/:id', async (req, res) => {
   try {
-    await dbRun('DELETE FROM folders WHERE id = ?', [req.params.id]);
-    await dbRun('UPDATE sessions SET folder_id = NULL WHERE folder_id = ?', [req.params.id]);
+    await dbRun('DELETE FROM folders WHERE id = ? AND user_id = ?', [req.params.id, (req as any).user.id]);
+    await dbRun('UPDATE sessions SET folder_id = NULL WHERE folder_id = ? AND user_id = ?', [req.params.id, (req as any).user.id]);
     res.json({ message: 'Folder deleted' });
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
@@ -80,7 +108,7 @@ app.delete('/api/folders/:id', async (req, res) => {
 // ===== Session Management Routes =====
 app.get('/api/sessions', async (req, res) => {
   try {
-    const rows = await dbQuery('SELECT id, name, host, port, username, password, folder_id, protocol, auth_type, use_sftp FROM sessions');
+    const rows = await dbQuery('SELECT id, name, host, port, username, password, folder_id, protocol, auth_type, use_sftp FROM sessions WHERE user_id = ?', [(req as any).user.id]);
     res.json(rows.map(r => ({ ...r, password: r.password ? '***' : '' })));
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
@@ -93,8 +121,8 @@ app.post('/api/sessions', async (req, res) => {
       finalPassword = encrypt(finalPassword, masterPassword);
     }
     const result = await dbRun(
-      'INSERT INTO sessions (name, host, port, username, password, folder_id, protocol, auth_type, private_key, use_sftp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [name || host, host, port || 22, username, finalPassword, folder_id || null, protocol || 'ssh', auth_type || 'password', private_key || null, use_sftp !== undefined ? use_sftp : 1]
+      'INSERT INTO sessions (name, host, port, username, password, folder_id, protocol, auth_type, private_key, use_sftp, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [name || host, host, port || 22, username, finalPassword, folder_id || null, protocol || 'ssh', auth_type || 'password', private_key || null, use_sftp !== undefined ? use_sftp : 1, (req as any).user.id]
     );
     res.json({ id: result.lastID, message: 'Session saved' });
   } catch (err: any) { res.status(500).json({ error: err.message }); }
@@ -105,19 +133,19 @@ app.put('/api/sessions/:id', async (req, res) => {
     const { name, host, port, username, password, folder_id, protocol, auth_type, private_key, use_sftp, masterPassword } = req.body;
     // update folder only if that's the intention
     if (folder_id !== undefined && !host) {
-      await dbRun('UPDATE sessions SET folder_id = ? WHERE id = ?', [folder_id, req.params.id]);
+      await dbRun('UPDATE sessions SET folder_id = ? WHERE id = ? AND user_id = ?', [folder_id, req.params.id, (req as any).user.id]);
     } else {
       // If password is masked ('***'), keep the existing one
       let finalPassword = password;
       if (password === '***' || password === undefined) {
-        const existing = await dbQuery('SELECT password FROM sessions WHERE id = ?', [req.params.id]);
+        const existing = await dbQuery('SELECT password FROM sessions WHERE id = ? AND user_id = ?', [req.params.id, (req as any).user.id]);
         finalPassword = existing[0]?.password || '';
       } else if (finalPassword && masterPassword) {
         finalPassword = encrypt(finalPassword, masterPassword);
       }
       await dbRun(
-        'UPDATE sessions SET name=?, host=?, port=?, username=?, password=?, folder_id=?, protocol=?, auth_type=?, private_key=?, use_sftp=? WHERE id=?',
-        [name, host, port, username, finalPassword, folder_id, protocol || 'ssh', auth_type || 'password', private_key || null, use_sftp !== undefined ? use_sftp : 1, req.params.id]
+        'UPDATE sessions SET name=?, host=?, port=?, username=?, password=?, folder_id=?, protocol=?, auth_type=?, private_key=?, use_sftp=? WHERE id=? AND user_id=?',
+        [name, host, port, username, finalPassword, folder_id, protocol || 'ssh', auth_type || 'password', private_key || null, use_sftp !== undefined ? use_sftp : 1, req.params.id, (req as any).user.id]
       );
     }
     res.json({ message: 'Updated' });
@@ -126,15 +154,15 @@ app.put('/api/sessions/:id', async (req, res) => {
 
 app.delete('/api/sessions/:id', async (req, res) => {
   try {
-    await dbRun('DELETE FROM sessions WHERE id = ?', [req.params.id]);
+    await dbRun('DELETE FROM sessions WHERE id = ? AND user_id = ?', [req.params.id, (req as any).user.id]);
     res.json({ message: 'Deleted' });
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
 app.get('/api/sessions/export/all', async (req, res) => {
   try {
-    const sessions = await dbQuery('SELECT * FROM sessions');
-    const folders = await dbQuery('SELECT * FROM folders');
+    const sessions = await dbQuery('SELECT * FROM sessions WHERE user_id = ?', [(req as any).user.id]);
+    const folders = await dbQuery('SELECT * FROM folders WHERE user_id = ?', [(req as any).user.id]);
     res.json({ sessions, folders });
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
@@ -146,12 +174,12 @@ app.post('/api/sessions/import', async (req, res) => {
 
     if (folders && Array.isArray(folders)) {
       for (const f of folders) {
-        const resFolder = await dbRun('INSERT INTO folders (name) VALUES (?)', [f.name]);
+        const resFolder = await dbRun('INSERT INTO folders (name, user_id) VALUES (?, ?)', [f.name, (req as any).user.id]);
         folderIdMap[f.id] = resFolder.lastID;
       }
       for (const f of folders) {
         if (f.parent_id && folderIdMap[f.parent_id]) {
-           await dbRun('UPDATE folders SET parent_id = ? WHERE id = ?', [folderIdMap[f.parent_id], folderIdMap[f.id]]);
+           await dbRun('UPDATE folders SET parent_id = ? WHERE id = ? AND user_id = ?', [folderIdMap[f.parent_id], folderIdMap[f.id], (req as any).user.id]);
         }
       }
     }
@@ -160,8 +188,8 @@ app.post('/api/sessions/import', async (req, res) => {
       for (const s of sessions) {
         const newFolderId = s.folder_id ? (folderIdMap[s.folder_id] || s.folder_id) : null;
         await dbRun(
-          'INSERT INTO sessions (name, host, port, username, password, folder_id, protocol, auth_type, private_key, use_sftp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-          [s.name, s.host, s.port, s.username, s.password, newFolderId, s.protocol, s.auth_type, s.private_key, s.use_sftp]
+          'INSERT INTO sessions (name, host, port, username, password, folder_id, protocol, auth_type, private_key, use_sftp, user_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [s.name, s.host, s.port, s.username, s.password, newFolderId, s.protocol, s.auth_type, s.private_key, s.use_sftp, (req as any).user.id]
         );
       }
     }
@@ -173,7 +201,7 @@ app.post('/api/sessions/import', async (req, res) => {
 // Get full session details (with password) for connection
 app.get('/api/sessions/:id/connect', async (req, res) => {
   try {
-    const rows = await dbQuery('SELECT * FROM sessions WHERE id = ?', [req.params.id]);
+    const rows = await dbQuery('SELECT * FROM sessions WHERE id = ? AND user_id = ?', [req.params.id, (req as any).user.id]);
     if (rows.length === 0) return res.status(404).json({ error: 'Session not found' });
     res.json(rows[0]);
   } catch (err: any) { res.status(500).json({ error: err.message }); }
@@ -192,7 +220,7 @@ app.get('/api/history', async (req, res) => {
 // Check if master password is set
 app.get('/api/vault/status', async (req, res) => {
   try {
-    const users = await dbQuery('SELECT master_password_hash FROM users WHERE id = 1');
+    const users = await dbQuery('SELECT master_password_hash FROM users WHERE id = ?', [(req as any).user.id]);
     const hasVault = !!(users[0]?.master_password_hash);
     res.json({ hasVault });
   } catch (err: any) { res.status(500).json({ error: err.message }); }
@@ -205,12 +233,12 @@ app.post('/api/vault/setup', async (req, res) => {
     if (!masterPassword || masterPassword.length < 4) {
       return res.status(400).json({ error: 'Master password must be at least 4 characters' });
     }
-    const users = await dbQuery('SELECT master_password_hash FROM users WHERE id = 1');
+    const users = await dbQuery('SELECT master_password_hash FROM users WHERE id = ?', [(req as any).user.id]);
     if (users[0]?.master_password_hash) {
       return res.status(400).json({ error: 'Master password already set. Use change endpoint.' });
     }
     const hash = hashMasterPassword(masterPassword);
-    await dbRun('UPDATE users SET master_password_hash = ? WHERE id = 1', [hash]);
+    await dbRun('UPDATE users SET master_password_hash = ? WHERE id = ?', [hash, (req as any).user.id]);
     res.json({ message: 'Master password set successfully' });
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
@@ -219,7 +247,7 @@ app.post('/api/vault/setup', async (req, res) => {
 app.post('/api/vault/verify', async (req, res) => {
   try {
     const { masterPassword } = req.body;
-    const users = await dbQuery('SELECT master_password_hash FROM users WHERE id = 1');
+    const users = await dbQuery('SELECT master_password_hash FROM users WHERE id = ?', [(req as any).user.id]);
     if (!users[0]?.master_password_hash) {
       return res.json({ valid: true, noVault: true });
     }
@@ -280,6 +308,60 @@ app.post('/api/sessions/import', async (req, res) => {
       }
     }
     res.json({ message: `Imported ${imported} sessions` });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+// ===== User Management Routes =====
+app.get('/api/users', async (req, res) => {
+  if ((req as any).user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+  try {
+    const users = await dbQuery('SELECT id, username, role FROM users');
+    res.json(users);
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/users', async (req, res) => {
+  if ((req as any).user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+  try {
+    const { username, password, role } = req.body;
+    const result = await dbRun('INSERT INTO users (username, password, role) VALUES (?, ?, ?)', [username, password, role || 'user']);
+    res.json({ id: result.lastID, message: 'User created' });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+app.put('/api/users/:id', async (req, res) => {
+  const reqUser = (req as any).user;
+  const targetId = parseInt(req.params.id);
+  if (reqUser.role !== 'admin' && reqUser.id !== targetId) return res.status(403).json({ error: 'Forbidden' });
+  try {
+    const { username, password, role } = req.body;
+    const updateRole = reqUser.role === 'admin' && role ? role : undefined;
+    
+    if (password) {
+      if (updateRole) {
+        await dbRun('UPDATE users SET username=?, password=?, role=? WHERE id=?', [username, password, updateRole, targetId]);
+      } else {
+        await dbRun('UPDATE users SET username=?, password=? WHERE id=?', [username, password, targetId]);
+      }
+    } else {
+       if (updateRole) {
+         await dbRun('UPDATE users SET username=?, role=? WHERE id=?', [username, updateRole, targetId]);
+       } else {
+         await dbRun('UPDATE users SET username=? WHERE id=?', [username, targetId]);
+       }
+    }
+    res.json({ message: 'User updated' });
+  } catch (err: any) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/users/:id', async (req, res) => {
+  if ((req as any).user.role !== 'admin') return res.status(403).json({ error: 'Forbidden' });
+  if (parseInt(req.params.id) === 1) return res.status(400).json({ error: 'Cannot delete admin' });
+  try {
+    await dbRun('DELETE FROM users WHERE id = ?', [req.params.id]);
+    await dbRun('DELETE FROM sessions WHERE user_id = ?', [req.params.id]);
+    await dbRun('DELETE FROM folders WHERE user_id = ?', [req.params.id]);
+    res.json({ message: 'User deleted' });
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 

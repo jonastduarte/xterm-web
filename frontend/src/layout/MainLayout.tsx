@@ -4,6 +4,7 @@ import FTPBrowser from '../components/FTPBrowser';
 import SessionTree from '../components/SessionTree';
 import TerminalComponent from '../components/Terminal';
 import SessionDialog from '../components/SessionDialog';
+import UserManagement from '../components/UserManagement';
 import type { TabSession } from '../App';
 import { 
   TerminalSquare, 
@@ -26,20 +27,23 @@ import {
   HardDrive,
   Plus,
   Globe,
-  Lock
+  Lock,
+  Users
 } from 'lucide-react';
 
 interface MainLayoutProps {
   onLogout: () => void;
   apiUrl: string;
   username: string | null;
+  role: string;
+  userId: number | null;
 }
 
 let tabCounter = 0;
 
-const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username }) => {
+const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, role, userId }) => {
   const [sidebarWidth, setSidebarWidth] = useState(250);
-  const [sidebarTab, setSidebarTab] = useState<'sessions' | 'tools' | 'macros' | 'sftp'>('sessions');
+  const [sidebarTab, setSidebarTab] = useState<'sessions' | 'tools' | 'macros' | 'sftp' | 'users'>('sessions');
   const [tabs, setTabs] = useState<TabSession[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const [isSessionDialogOpen, setSessionDialogOpen] = useState(false);
@@ -337,6 +341,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username }) =
             onClick={() => setSidebarTab('sftp')} 
             color="#e67e22"
           />
+          <VerticalTab 
+            icon={<Users size={16} />} 
+            label="Users" 
+            isActive={sidebarTab === 'users'} 
+            onClick={() => setSidebarTab('users')} 
+            color="#8e44ad"
+          />
           
         </div>
 
@@ -448,6 +459,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username }) =
                     <Globe size={14} /> New FTP Session
                   </button>
                 </div>
+             )}
+
+             {sidebarTab === 'users' && (
+                <UserManagement apiUrl={apiUrl} role={role} currentUserId={userId} />
              )}
           </div>
         </div>

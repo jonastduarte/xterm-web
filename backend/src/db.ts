@@ -14,16 +14,18 @@ const db = new sqlite3.Database(dbPath, (err) => {
         id INTEGER PRIMARY KEY,
         username TEXT,
         password TEXT,
-        master_password_hash TEXT
+        master_password_hash TEXT,
+        role TEXT DEFAULT 'user'
       )`);
       db.run(`INSERT INTO users (id, username, password) SELECT 1, 'admin', 'admin' WHERE NOT EXISTS (SELECT 1 FROM users WHERE id = 1)`);
       
       // Migrate: add master_password_hash column if it doesn't exist
       db.run(`ALTER TABLE users ADD COLUMN master_password_hash TEXT`, () => { /* ignore if exists */ });
 
-      // Folders
-      db.run(`CREATE TABLE IF NOT EXISTS folders (id INTEGER PRIMARY KEY, name TEXT, parent_id INTEGER)`);
+      db.run(`CREATE TABLE IF NOT EXISTS folders (id INTEGER PRIMARY KEY, name TEXT, parent_id INTEGER, user_id INTEGER)`);
       db.run(`ALTER TABLE folders ADD COLUMN parent_id INTEGER`, () => { /* ignore if exists */ });
+      db.run(`ALTER TABLE folders ADD COLUMN user_id INTEGER DEFAULT 1`, () => { /* ignore */ });
+      db.run(`ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'user'`, () => { /* ignore */ });
       
       // Sessions — with protocol, auth_type, private_key support
       db.run(`CREATE TABLE IF NOT EXISTS sessions (
@@ -37,7 +39,8 @@ const db = new sqlite3.Database(dbPath, (err) => {
         protocol TEXT DEFAULT 'ssh',
         auth_type TEXT DEFAULT 'password',
         private_key TEXT,
-        use_sftp INTEGER DEFAULT 1
+        use_sftp INTEGER DEFAULT 1,
+        user_id INTEGER
       )`);
 
       // Migrate older schemas: add columns if they don't exist
@@ -46,6 +49,10 @@ const db = new sqlite3.Database(dbPath, (err) => {
       db.run(`ALTER TABLE sessions ADD COLUMN auth_type TEXT DEFAULT 'password'`, () => { /* ignore */ });
       db.run(`ALTER TABLE sessions ADD COLUMN private_key TEXT`, () => { /* ignore */ });
       db.run(`ALTER TABLE sessions ADD COLUMN use_sftp INTEGER DEFAULT 1`, () => { /* ignore */ });
+      db.run(`ALTER TABLE sessions ADD COLUMN user_id INTEGER DEFAULT 1`, () => { /* ignore */ });
+      
+      // Upgrade default admin role
+      db.run(`UPDATE users SET role = 'admin' WHERE id = 1`);
 
       // Connection history
       db.run(`CREATE TABLE IF NOT EXISTS connection_log (
