@@ -64,10 +64,24 @@ function decodeToken(token: string) {
 }
 
 function stripAnsi(data: Buffer | string): string {
-  const str = data.toString('utf-8');
-  // Comprehensive regex for ANSI escape codes (CSI, OSC, etc.)
-  const ansiRegex = /[\u001b\u009b][[\\]()#;?]*(?:(?:(?:[a-zA-Z\d]*(?:;[-a-zA-Z\d\/#&.:=?%@~]*)*)?\u0007)|(?:(?:\d{1,4}(?:;\d{0,4})*)?[\dA-PR-TZcf-ntqry=><~]))/g;
-  return str.replace(ansiRegex, '');
+  const str = typeof data === 'string' ? data : data.toString('utf-8');
+  
+  // 1. Remove standard ANSI escape sequences (colors, cursor movements, etc.)
+  let cleaned = str.replace(/[\x1b\x9b]\[[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, '');
+  
+  // 2. Remove OSC sequences (like Window Title changes ending in BEL (\x07) or ST (\x1b\\))
+  cleaned = cleaned.replace(/[\x1b\x9b]\].*?(?:\x07|\x1b\\)/g, '');
+
+  // 3. Process backspaces (\x08) to actually remove the preceding character
+  // While there's a character preceding a backspace that isn't a carriage return or line feed
+  while (/[^\n\r]\x08/.test(cleaned)) {
+    cleaned = cleaned.replace(/[^\n\r]\x08/g, '');
+  }
+  
+  // 4. Remove standalone BEL (\x07) and remaining starting backspaces
+  cleaned = cleaned.replace(/\x07|^\x08+/gm, '');
+
+  return cleaned;
 }
 
 app.post('/api/auth/login', async (req, res) => {
