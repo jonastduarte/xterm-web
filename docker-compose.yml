@@ -11,6 +11,7 @@ services:
       - PORT=3000
       - JWT_SECRET=${JWT_SECRET:-supersecret_moba_clone_key}
       - DB_FILE=/app/data/database.sqlite
+      - DATA_DIR=/app/data
     volumes:
       - backend-data:/app/data
     restart: unless-stopped

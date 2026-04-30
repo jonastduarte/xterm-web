@@ -17,14 +17,15 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Ensure upload directory exists
-const uploadDir = os.tmpdir() + '/moba/uploads/';
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
-}
-const upload = multer({ dest: uploadDir });
-
-const sessionLogsDir = os.tmpdir() + '/moba/session_logs/';
+// Ensure upload and logging directories exist and use persistent data path if provided
+  const dataDir = process.env.DATA_DIR || path.join(os.tmpdir(), 'moba');
+  const uploadDir = path.join(dataDir, 'uploads');
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+  const upload = multer({ dest: uploadDir });
+  
+  const sessionLogsDir = path.join(dataDir, 'session_logs');
 if (!fs.existsSync(sessionLogsDir)) fs.mkdirSync(sessionLogsDir, { recursive: true });
 
 // Auto-cleanup logs older than 30 days
