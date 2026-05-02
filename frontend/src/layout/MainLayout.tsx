@@ -46,8 +46,14 @@ let tabCounter = 0;
 const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, role, userId }) => {
   const [sidebarWidth, setSidebarWidth] = useState(250);
   const [sidebarTab, setSidebarTab] = useState<'sessions' | 'tools' | 'macros' | 'sftp' | 'users' | 'logs'>('sessions');
-  const [tabs, setTabs] = useState<TabSession[]>([]);
-  const [activeTabId, setActiveTabId] = useState<string | null>(null);
+  const [tabs, setTabs] = useState<TabSession[]>(() => {
+    try {
+      const saved = localStorage.getItem('moba_tabs');
+      if (saved) return JSON.parse(saved).map((t: any) => ({ ...t, ws: null }));
+    } catch {}
+    return [];
+  });
+  const [activeTabId, setActiveTabId] = useState<string | null>(() => localStorage.getItem('moba_active_tab') || null);
   const [splitMode, setSplitMode] = useState<'single' | 'vertical' | 'horizontal' | 'grid'>('single');
   const [splitDropdownOpen, setSplitDropdownOpen] = useState(false);
   const [isSessionDialogOpen, setSessionDialogOpen] = useState(false);
@@ -66,6 +72,26 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
   const [vaultPasswordInput, setVaultPasswordInput] = useState('');
 
   const activeTab = tabs.find(t => t.id === activeTabId) || null;
+
+  useEffect(() => {
+    const toSave = tabs.map(t => ({ id: t.id, session: t.session, protocol: t.protocol, label: t.label }));
+    localStorage.setItem('xterm_tabs', JSON.stringify(toSave));
+    if (activeTabId) localStorage.setItem('xterm_activeTabId', activeTabId);
+  }, [tabs, activeTabId]);
+
+  useEffect(() => {
+    const serializable = tabs.map(t => {
+      const { ws, ...rest } = t;
+      return rest;
+    });
+    localStorage.setItem('moba_tabs', JSON.stringify(serializable));
+  }, [tabs]);
+
+  useEffect(() => {
+    if (activeTabId) localStorage.setItem('moba_active_tab', activeTabId);
+    else localStorage.removeItem('moba_active_tab');
+  }, [activeTabId]);
+
 
   useEffect(() => {
     fetch(`${apiUrl}/api/vault/status`)
@@ -121,10 +147,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
     }
   };
 
-  const createConnection = useCallback((session: any) => {
+  const createConnection = useCallback((session: any, existingTabId?: string) => {
     const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:3000';
     const protocol = session.protocol || 'ssh';
-    const tabId = `tab-${++tabCounter}-${Date.now()}`;
+    const tabId = existingTabId || `tab-${++tabCounter}-${Date.now()}`;
 
     // Add the tab immediately (with ws: null) so the user sees it opening
     const newTab: TabSession = {
@@ -134,7 +160,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
       ws: null,
       label: session.name || session.host || 'New Connection'
     };
-    setTabs(prev => [...prev, newTab]);
+    if (!existingTabId) setTabs(prev => [...prev, newTab]);
     setActiveTabId(tabId);
 
     // If session comes from the saved list, password is masked as '***'
@@ -189,7 +215,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
       websocket.onopen = () => {
         websocket.send(JSON.stringify({
           type: 'connect',
-          payload: { ...realSession, protocol, masterPassword: currentMasterPass, token: localStorage.getItem('moba_token') }
+          payload: { ...realSession, protocol, tabId, masterPassword: currentMasterPass, token: localStorage.getItem('moba_token'), persistenceId: tabId }
         }));
         setTabs(prev => prev.map(t =>
           t.id === tabId ? { ...t, ws: websocket, session: realSession } : t
@@ -209,6 +235,22 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
       };
     });
   }, [apiUrl]);
+
+  
+  useEffect(() => {
+    // Restore connections for all persisted tabs
+    const savedTabs = localStorage.getItem('moba_tabs');
+    if (savedTabs) {
+      try {
+        const parsed = JSON.parse(savedTabs);
+        parsed.forEach((tab: any) => {
+          if (tab.session) {
+             createConnection(tab.session, tab.id);
+          }
+        });
+      } catch (e) {}
+    }
+  }, []); // Only run once on mount
 
   const closeTab = useCallback((tabId: string) => {
     const tab = tabs.find(t => t.id === tabId);

@@ -67,7 +67,10 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ tab }) => {
       try {
         fitAddon.fit();
         if (ws && ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ type: 'resize', payload: { rows: term.rows, cols: term.cols } }));
+          ws.send(JSON.stringify({ 
+            type: 'resize', 
+            payload: { rows: term.rows, cols: term.cols, persistenceId: tab.id } 
+          }));
         }
       } catch (_) { /* ignore */ }
     };
@@ -78,11 +81,15 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ tab }) => {
           if (!terminalRef.current) return;
           try {
             term.open(terminalRef.current);
+            term.focus();
           } catch (e) {
             return;
           }
           term.writeln('\x1b[32mConnecting...\x1b[0m');
-          setTimeout(safeFit, 50);
+          setTimeout(() => {
+            safeFit();
+            term.focus();
+          }, 50);
           
           if (protocol === 'serial') {
             connectSerial();
@@ -118,19 +125,9 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ tab }) => {
 
     openTerminal();
 
-    const handleMessage = (event: MessageEvent) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'data') {
-          term.write(data.payload);
-        } else if (data.type === 'status') {
-          term.writeln(`\r\n\x1b[33m[Status: ${data.payload}]\x1b[0m\r\n`);
-        } else if (data.type === 'error') {
-          term.writeln(`\r\n\x1b[31m[Error: ${data.payload}]\x1b[0m\r\n`);
-        }
-      } catch (_) {}
-    };
-    if (ws) ws.addEventListener('message', handleMessage);
+    // WS listener logic moved to a separate useEffect to handle re-attachment
+    
+    // ... rest of init logic
 
     const onDataDisposable = term.onData(async data => {
       if (protocol === 'serial' && serialPortRef.current?.writable) {
@@ -138,7 +135,10 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ tab }) => {
         await writer.write(new TextEncoder().encode(data));
         writer.releaseLock();
       } else if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: 'data', payload: data }));
+        ws.send(JSON.stringify({ 
+          type: 'data', 
+          payload: { data, persistenceId: tab.id } 
+        }));
       }
     });
 
@@ -174,16 +174,13 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ tab }) => {
     }
 
     return () => {
-      initializedRef.current = false;
-      
+      // Keep terminal and fitAddon but remove listeners
       const termEl = terminalRef.current;
       if (termEl) {
         termEl.removeEventListener('contextmenu', handleContextMenu);
       }
-      
       window.removeEventListener('resize', safeFit);
       resizeObserver.disconnect();
-      if (ws) ws.removeEventListener('message', handleMessage);
       
       if (serialReaderRef.current) {
         try { serialReaderRef.current.cancel(); } catch(_) {}
@@ -192,12 +189,52 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ tab }) => {
         try { serialPortRef.current.close(); } catch(_) {}
       }
 
-      try { onDataDisposable.dispose(); } catch (_) {}
-      try { term.dispose(); } catch (_) {}
-      termRef.current = null;
-      fitAddonRef.current = null;
+      onDataDisposable.dispose();
+      // We don't dispose term here to allow persistence if possible, 
+      // but in this app it's better to recreate it if the component unmounts normally
+      // unless we want a more complex manager.
     };
-  }, [ws, protocol, session]);
+  }, [protocol, session]); // Remove ws from here so it doesn't re-run just for ws change
+
+  // Separate effect for WebSocket listeners to support re-attachment
+  useEffect(() => {
+    if (!ws || !termRef.current) return;
+
+    const term = termRef.current;
+    const handleMessage = (event: MessageEvent) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'data') {
+          term.write(data.payload);
+        } else if (data.type === 'status') {
+          term.writeln(`\r\n\x1b[33m[Status: ${data.payload}]\x1b[0m\r\n`);
+        } else if (data.type === 'error') {
+          term.writeln(`\r\n\x1b[31m[Error: ${data.payload}]\x1b[0m\r\n`);
+        }
+      } catch (_) {}
+    };
+
+    ws.addEventListener('message', handleMessage);
+    
+    // Also trigger a fit when WS reconnects
+    if (ws.readyState === WebSocket.OPEN) {
+      setTimeout(() => {
+        if (fitAddonRef.current) {
+          try {
+            fitAddonRef.current.fit();
+            ws.send(JSON.stringify({ 
+              type: 'resize', 
+              payload: { rows: term.rows, cols: term.cols, persistenceId: tab.id } 
+            }));
+          } catch(e){}
+        }
+      }, 200);
+    }
+
+    return () => {
+      ws.removeEventListener('message', handleMessage);
+    };
+  }, [ws]);
 
   const handlePasteConfirm = () => {
     if (termRef.current) {
@@ -205,7 +242,10 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ tab }) => {
         const writer = serialPortRef.current.writable.getWriter();
         writer.write(new TextEncoder().encode(pasteContent)).finally(() => writer.releaseLock());
       } else if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: 'data', payload: pasteContent }));
+        ws.send(JSON.stringify({ 
+          type: 'data', 
+          payload: { data: pasteContent, persistenceId: tab.id } 
+        }));
       }
     }
     setPasteModalOpen(false);

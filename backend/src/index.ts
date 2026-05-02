@@ -25,8 +25,9 @@ app.use(express.json());
   }
   const upload = multer({ dest: uploadDir });
   
+  // Use /app/data/session_logs for persistence
   const sessionLogsDir = path.join(dataDir, 'session_logs');
-if (!fs.existsSync(sessionLogsDir)) fs.mkdirSync(sessionLogsDir, { recursive: true });
+  if (!fs.existsSync(sessionLogsDir)) fs.mkdirSync(sessionLogsDir, { recursive: true });
 
 // Auto-cleanup logs older than 30 days
 setInterval(() => {
@@ -63,6 +64,34 @@ function decodeToken(token: string) {
     return { id: parseInt(id), username, role };
   } catch { return null; }
 }
+
+const sessionRegistry = new Map<string, {
+  ssh?: any;
+  telnetSocket?: net.Socket | null;
+  shellStream?: any;
+  logStream?: fs.WriteStream;
+  sftpSession?: any;
+  ws?: WebSocket | null;
+  lastActivity: number;
+  protocol: string;
+  userId: number;
+}>();
+
+// Session Inactivity Cleanup (30 minutes)
+setInterval(() => {
+  const now = Date.now();
+  const timeout = 30 * 60 * 1000;
+  for (const [sid, session] of sessionRegistry.entries()) {
+    // If no WebSocket is attached and inactive for > 30m, close it
+    if (!session.ws && (now - session.lastActivity > timeout)) {
+      console.log(`Closing abandoned session ${sid}`);
+      if (session.ssh) session.ssh.end();
+      if (session.telnetSocket) session.telnetSocket.destroy();
+      if (session.logStream) session.logStream.end();
+      sessionRegistry.delete(sid);
+    }
+  }
+}, 60000);
 
 function stripAnsi(data: Buffer | string): string {
   const str = typeof data === 'string' ? data : data.toString('utf-8');
@@ -703,6 +732,7 @@ wss.on('connection', (ws: WebSocket) => {
   let sftpSession: any = null;
   let telnetSocket: net.Socket | null = null;
   let logStream: fs.WriteStream | null = null;
+  let currentPersistenceId: string | null = null;
 
   ws.on('message', (message: string) => {
     let data: any;
@@ -713,10 +743,25 @@ wss.on('connection', (ws: WebSocket) => {
     }
 
     if (data.type === 'connect') {
-      const { host, port, username, password, protocol, token } = data.payload;
+      const { host, port, username, password, protocol, token, persistenceId } = data.payload;
+      currentPersistenceId = persistenceId;
       
       const decoded = decodeToken(token || '');
       const userId = decoded ? decoded.id : 1;
+
+      // Check if we are reattaching to an existing session
+      if (persistenceId && sessionRegistry.has(persistenceId)) {
+        const session = sessionRegistry.get(persistenceId)!;
+        console.log(`Reattaching to session ${persistenceId}`);
+        session.ws = ws;
+        session.lastActivity = Date.now();
+        
+        // Re-send status
+        ws.send(JSON.stringify({ type: 'status', payload: 'Reconnected' }));
+        if (session.sftpSession) ws.send(JSON.stringify({ type: 'sftp:ready' }));
+        
+        return;
+      }
       
       const date = new Date();
       const dd = String(date.getDate()).padStart(2, '0');
@@ -740,6 +785,17 @@ wss.on('connection', (ws: WebSocket) => {
       
       logStream = fs.createWriteStream(logFilePath, { flags: 'a' });
       
+      // Initialize Registry Entry
+      const sid = persistenceId || Math.random().toString(36).substring(7);
+      const sessionEntry = {
+        userId,
+        protocol,
+        logStream,
+        lastActivity: Date.now(),
+        ws: ws
+      };
+      sessionRegistry.set(sid, sessionEntry as any);
+
       if (protocol === 'telnet') {
         // Telnet: raw TCP connection
         const telnetPort = port || 23;
@@ -755,6 +811,8 @@ wss.on('connection', (ws: WebSocket) => {
         });
 
         telnetSocket.on('data', (d: Buffer) => {
+          const session = sessionRegistry.get(persistenceId);
+          if (session) session.lastActivity = Date.now();
           if (logStream) logStream.write(stripAnsi(d));
           ws.send(JSON.stringify({ type: 'data', payload: d.toString('utf-8') }));
         });
@@ -780,11 +838,16 @@ wss.on('connection', (ws: WebSocket) => {
               return;
             }
             sftpSession = sftp;
+            const session = sessionRegistry.get(persistenceId);
+            if (session) session.sftpSession = sftp;
             ws.send(JSON.stringify({ type: 'sftp:ready' }));
           });
         }).on('error', (err: any) => {
           ws.send(JSON.stringify({ type: 'error', payload: err.message || err.level || 'SFTP Connection failed' }));
         }).connect({ host, port: port || 22, username, password });
+        
+        const session = sessionRegistry.get(persistenceId);
+        if (session) session.ssh = ssh;
         
       } else {
         // SSH connection with shell + SFTP
@@ -795,6 +858,8 @@ wss.on('connection', (ws: WebSocket) => {
           ssh.sftp((err, sftp) => {
             if (!err) {
               sftpSession = sftp;
+              const session = sessionRegistry.get(persistenceId);
+              if (session) session.sftpSession = sftp;
               ws.send(JSON.stringify({ type: 'sftp:ready' }));
             }
           });
@@ -806,13 +871,23 @@ wss.on('connection', (ws: WebSocket) => {
             }
 
             shellStream = stream;
+            const session = sessionRegistry.get(persistenceId);
+            if (session) {
+              session.ssh = ssh;
+              session.shellStream = stream;
+            }
 
             // Handle shell output
             stream.on('data', (d: any) => {
-              if (logStream) logStream.write(stripAnsi(d));
-              ws.send(JSON.stringify({ type: 'data', payload: d.toString('utf-8') }));
+              const session = sessionRegistry.get(persistenceId);
+              if (session) {
+                session.lastActivity = Date.now();
+                if (session.logStream) session.logStream.write(stripAnsi(d));
+                if (session.ws) session.ws.send(JSON.stringify({ type: 'data', payload: d.toString('utf-8') }));
+              }
             }).on('close', () => {
               ssh.end();
+              if (persistenceId) sessionRegistry.delete(persistenceId);
               ws.send(JSON.stringify({ type: 'status', payload: 'Closed' }));
             });
           });
@@ -824,15 +899,26 @@ wss.on('connection', (ws: WebSocket) => {
 
     // Terminal data (SSH shell or Telnet)
     if (data.type === 'data') {
-      if (shellStream) shellStream.write(data.payload);
-      else if (telnetSocket) telnetSocket.write(data.payload);
+      const session = sessionRegistry.get(data.payload.persistenceId || '');
+      if (session) {
+        session.lastActivity = Date.now();
+        if (session.shellStream) session.shellStream.write(data.payload.data);
+        else if (session.telnetSocket) session.telnetSocket.write(data.payload.data);
+      } else {
+        // Fallback for legacy messages
+        if (shellStream) shellStream.write(data.payload);
+        else if (telnetSocket) telnetSocket.write(data.payload);
+      }
     }
 
     // Terminal resize
-    if (data.type === 'resize' && shellStream) {
-      try {
-        shellStream.setWindow(data.payload.rows, data.payload.cols, 0, 0);
-      } catch (e) { /* ignore */ }
+    if (data.type === 'resize') {
+      const session = sessionRegistry.get(data.payload.persistenceId || '');
+      if (session && session.shellStream) {
+        try {
+          session.shellStream.setWindow(data.payload.rows, data.payload.cols, 0, 0);
+        } catch (e) { /* ignore */ }
+      }
     }
 
     // ===== SFTP Operations via WebSocket =====
@@ -914,9 +1000,17 @@ wss.on('connection', (ws: WebSocket) => {
   });
 
   ws.on('close', () => {
-    ssh.end();
-    if (telnetSocket) { telnetSocket.destroy(); telnetSocket = null; }
-    if (logStream) { logStream.end(); logStream = null; }
+    if (currentPersistenceId && sessionRegistry.has(currentPersistenceId)) {
+      const session = sessionRegistry.get(currentPersistenceId)!;
+      console.log(`Websocket closed for session ${currentPersistenceId}, keeping session alive`);
+      session.ws = null;
+      session.lastActivity = Date.now();
+    } else {
+      console.log('Websocket closed, terminating session');
+      ssh.end();
+      if (telnetSocket) { telnetSocket.destroy(); telnetSocket = null; }
+      if (logStream) { logStream.end(); logStream = null; }
+    }
   });
 });
 
