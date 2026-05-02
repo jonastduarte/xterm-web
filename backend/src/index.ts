@@ -75,6 +75,7 @@ const sessionRegistry = new Map<string, {
   lastActivity: number;
   protocol: string;
   userId: number;
+  history: string[]; // Buffer for replaying history on reconnect
 }>();
 
 // Session Inactivity Cleanup (30 minutes)
@@ -758,6 +759,14 @@ wss.on('connection', (ws: WebSocket) => {
         
         // Re-send status
         ws.send(JSON.stringify({ type: 'status', payload: 'Reconnected' }));
+        
+        // REPLAY HISTORY
+        if (session.history && session.history.length > 0) {
+          for (const chunk of session.history) {
+            ws.send(JSON.stringify({ type: 'data', payload: chunk }));
+          }
+        }
+
         if (session.sftpSession) ws.send(JSON.stringify({ type: 'sftp:ready' }));
         
         return;
@@ -792,7 +801,8 @@ wss.on('connection', (ws: WebSocket) => {
         protocol,
         logStream,
         lastActivity: Date.now(),
-        ws: ws
+        ws: ws,
+        history: []
       };
       sessionRegistry.set(sid, sessionEntry as any);
 
@@ -812,9 +822,14 @@ wss.on('connection', (ws: WebSocket) => {
 
         telnetSocket.on('data', (d: Buffer) => {
           const session = sessionRegistry.get(persistenceId);
-          if (session) session.lastActivity = Date.now();
+          if (session) {
+            session.lastActivity = Date.now();
+            const chunk = d.toString('utf-8');
+            session.history.push(chunk);
+            if (session.history.length > 1000) session.history.shift();
+            if (session.ws) session.ws.send(JSON.stringify({ type: 'data', payload: chunk }));
+          }
           if (logStream) logStream.write(stripAnsi(d));
-          ws.send(JSON.stringify({ type: 'data', payload: d.toString('utf-8') }));
         });
 
         telnetSocket.on('close', () => {
@@ -882,8 +897,12 @@ wss.on('connection', (ws: WebSocket) => {
               const session = sessionRegistry.get(persistenceId);
               if (session) {
                 session.lastActivity = Date.now();
+                const chunk = d.toString('utf-8');
+                session.history.push(chunk);
+                if (session.history.length > 1000) session.history.shift();
+                
                 if (session.logStream) session.logStream.write(stripAnsi(d));
-                if (session.ws) session.ws.send(JSON.stringify({ type: 'data', payload: d.toString('utf-8') }));
+                if (session.ws) session.ws.send(JSON.stringify({ type: 'data', payload: chunk }));
               }
             }).on('close', () => {
               ssh.end();
