@@ -8,6 +8,21 @@ interface TerminalComponentProps {
   tab: TabSession;
 }
 
+// Global cache to persist terminal instances across layout changes (remounts)
+const terminalCache = new Map<string, { 
+  term: Terminal, 
+  fitAddon: FitAddon,
+  initialized: boolean 
+}>();
+
+export const disposeTerminalInstance = (tabId: string) => {
+  const cached = terminalCache.get(tabId);
+  if (cached) {
+    try { cached.term.dispose(); } catch(e) {}
+    terminalCache.delete(tabId);
+  }
+};
+
 const TerminalComponent: React.FC<TerminalComponentProps> = ({ tab }) => {
   const { ws, protocol, session } = tab;
   const terminalRef = useRef<HTMLDivElement>(null);
@@ -20,43 +35,52 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ tab }) => {
   const [pasteContent, setPasteContent] = useState('');
 
   useEffect(() => {
-    if (!terminalRef.current || initializedRef.current) return;
-    initializedRef.current = true;
+    if (!terminalRef.current) return;
+    
+    let term: Terminal;
+    let fitAddon: FitAddon;
+    
+    const cached = terminalCache.get(tab.id);
+    if (cached) {
+      term = cached.term;
+      fitAddon = cached.fitAddon;
+    } else {
+      term = new Terminal({
+        cursorBlink: true,
+        fontSize: 14,
+        fontFamily: "'Cascadia Code', 'Fira Code', 'Consolas', 'Courier New', monospace",
+        theme: {
+          background: '#1e1e1e',
+          foreground: '#d4d4d4',
+          cursor: '#aeafad',
+          cursorAccent: '#1e1e1e',
+          selectionBackground: '#264f78',
+          black: '#1e1e1e',
+          red: '#f44747',
+          green: '#6a9955',
+          yellow: '#d7ba7d',
+          blue: '#569cd6',
+          magenta: '#c586c0',
+          cyan: '#4ec9b0',
+          white: '#d4d4d4',
+          brightBlack: '#808080',
+          brightRed: '#f44747',
+          brightGreen: '#6a9955',
+          brightYellow: '#d7ba7d',
+          brightBlue: '#569cd6',
+          brightMagenta: '#c586c0',
+          brightCyan: '#4ec9b0',
+          brightWhite: '#e5e5e5'
+        },
+        scrollback: 10000,
+        convertEol: true,
+        allowProposedApi: true
+      });
 
-    const term = new Terminal({
-      cursorBlink: true,
-      fontSize: 14,
-      fontFamily: "'Cascadia Code', 'Fira Code', 'Consolas', 'Courier New', monospace",
-      theme: {
-        background: '#1e1e1e',
-        foreground: '#d4d4d4',
-        cursor: '#aeafad',
-        cursorAccent: '#1e1e1e',
-        selectionBackground: '#264f78',
-        black: '#1e1e1e',
-        red: '#f44747',
-        green: '#6a9955',
-        yellow: '#d7ba7d',
-        blue: '#569cd6',
-        magenta: '#c586c0',
-        cyan: '#4ec9b0',
-        white: '#d4d4d4',
-        brightBlack: '#808080',
-        brightRed: '#f44747',
-        brightGreen: '#6a9955',
-        brightYellow: '#d7ba7d',
-        brightBlue: '#569cd6',
-        brightMagenta: '#c586c0',
-        brightCyan: '#4ec9b0',
-        brightWhite: '#e5e5e5'
-      },
-      scrollback: 10000,
-      convertEol: true,
-      allowProposedApi: true
-    });
-
-    const fitAddon = new FitAddon();
-    term.loadAddon(fitAddon);
+      fitAddon = new FitAddon();
+      term.loadAddon(fitAddon);
+      terminalCache.set(tab.id, { term, fitAddon, initialized: false });
+    }
 
     termRef.current = term;
     fitAddonRef.current = fitAddon;
@@ -81,17 +105,21 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ tab }) => {
           if (!terminalRef.current) return;
           try {
             term.open(terminalRef.current);
+            const cached = terminalCache.get(tab.id);
+            if (cached && !cached.initialized) {
+               term.writeln('\x1b[32mConnecting...\x1b[0m');
+               cached.initialized = true;
+            }
             term.focus();
           } catch (e) {
             return;
           }
-          term.writeln('\x1b[32mConnecting...\x1b[0m');
           setTimeout(() => {
             safeFit();
             term.focus();
           }, 50);
           
-          if (protocol === 'serial') {
+          if (protocol === 'serial' && (!cached || !cached.initialized)) {
             connectSerial();
           }
         });

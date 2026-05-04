@@ -54,7 +54,7 @@ O sistema deve permitir conexões seguras e eficientes com servidores remotos at
   - Usuário/senha
   - Chave privada (RSA/ED25519)
 - Execução de comandos
-- Port forwarding
+
 - Multiplexação de sessões
 
 ## 3.2 Telnet
@@ -133,18 +133,7 @@ Atualizações em lote
 6.3 Requisitos
 Seleção múltipla de sessões
 Consolidação de outputs
-🌐 7. Port Forwarding / Túnel SSH
-7.1 Tipos suportados
-Local forwarding
-Remote forwarding
-Dynamic (SOCKS proxy)
-7.2 Configuração
-Porta local
-Porta remota
-Destino
-7.3 Segurança
-Validação de portas
-Controle de acesso
+
 🧩 8. Interface do Usuário (UI/UX)
 8.1 Layout
 Sidebar esquerda:

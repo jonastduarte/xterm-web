@@ -2,10 +2,11 @@ import React, { useState, useEffect, useCallback } from 'react';
 import SFTPBrowser from '../components/SFTPBrowser';
 import FTPBrowser from '../components/FTPBrowser';
 import SessionTree from '../components/SessionTree';
-import TerminalComponent from '../components/Terminal';
+import TerminalComponent, { disposeTerminalInstance } from '../components/Terminal';
 import SessionDialog from '../components/SessionDialog';
 import UserManagement from '../components/UserManagement';
 import SessionLogs from '../components/SessionLogs';
+import HelpDialog from '../components/HelpDialog';
 import type { TabSession } from '../App';
 import { 
   TerminalSquare, 
@@ -13,9 +14,8 @@ import {
   Settings, 
   List, 
   Monitor, 
-  LogOut,
+  LogOut, 
   X,
-  SlidersHorizontal,
   Server,
   Wrench,
   FolderOpen,
@@ -58,6 +58,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
   const [splitDropdownOpen, setSplitDropdownOpen] = useState(false);
   const [isSessionDialogOpen, setSessionDialogOpen] = useState(false);
   const [editingSession, setEditingSession] = useState<any>(null);
+  const [isHelpDialogOpen, setHelpDialogOpen] = useState(false);
   const [sessionDialogMode, setSessionDialogMode] = useState<'create'|'edit'|'clone'>('create');
   const [sftpPanelWidth, setSftpPanelWidth] = useState(240);
   const [showSftpPanel, setShowSftpPanel] = useState(true);
@@ -265,6 +266,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
       }
       return remaining;
     });
+    
+    // Clean up terminal instance from cache
+    disposeTerminalInstance(tabId);
   }, [tabs, activeTabId]);
 
   const handleSaveSession = async (sessionData: any, mode: 'create' | 'edit') => {
@@ -372,6 +376,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: '#F0F0F0', fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif" }}>
       
       {isSessionDialogOpen && <SessionDialog onClose={() => setSessionDialogOpen(false)} onSave={handleSaveSession} initialData={editingSession} mode={sessionDialogMode} />}
+      {isHelpDialogOpen && <HelpDialog onClose={() => setHelpDialogOpen(false)} />}
 
       {/* Title Bar */}
       <div style={{ backgroundColor: '#fff', padding: '2px 8px', borderBottom: '1px solid #ccc', fontSize: '12px', display: 'flex', gap: '12px', justifyContent: 'space-between' }}>
@@ -415,11 +420,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
           )}
         </div>
         <RibbonBtn icon={<Share2 size={22} color="#9b59b6" />} label="MultiExec" />
-        <RibbonBtn icon={<SlidersHorizontal size={22} color="#34495e" />} label="Tunneling" />
+
         <RibbonBtn icon={<Settings size={22} color="#95a5a6" />} label="Settings" />
         
         <div style={{ flex: 1 }}></div>
-        <RibbonBtn icon={<HelpCircle size={22} color="#3498db" />} label="Help" />
+        <RibbonBtn icon={<HelpCircle size={22} color="#3498db" />} label="Help" onClick={() => setHelpDialogOpen(true)} />
         <RibbonBtn icon={<Power size={22} color="#e74c3c" />} label="Exit" onClick={() => {
           tabs.forEach(t => closeTab(t.id));
         }} />
@@ -522,7 +527,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
                 <div style={{ padding: '12px', color: '#555', fontSize: '12px' }}>
                   <b style={{ marginBottom: '8px', display: 'block', color: '#1a1a1a' }}>Network Tools</b>
                   <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                    {['MobaSSHTunnel', 'Network services', 'List open ports', 'Network scanner', 'Ports scanner', 'Packet capture'].map(tool => (
+                    {['Network services', 'List open ports', 'Network scanner', 'Ports scanner', 'Packet capture'].map(tool => (
                       <li key={tool} style={{ padding: '6px 8px', cursor: 'pointer', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '6px', color: '#1a1a1a' }}>
                         <Server size={14} color="#7f8c8d" />
                         <span>{tool}</span>
