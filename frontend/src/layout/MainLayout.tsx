@@ -59,6 +59,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
   const [isSessionDialogOpen, setSessionDialogOpen] = useState(false);
   const [editingSession, setEditingSession] = useState<any>(null);
   const [isHelpDialogOpen, setHelpDialogOpen] = useState(false);
+  const [isMultiExec, setIsMultiExec] = useState(false);
   const [sessionDialogMode, setSessionDialogMode] = useState<'create'|'edit'|'clone'>('create');
   const [sftpPanelWidth, setSftpPanelWidth] = useState(240);
   const [showSftpPanel, setShowSftpPanel] = useState(true);
@@ -235,7 +236,38 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
         ));
       };
     });
-  }, [apiUrl]);
+  }, [apiUrl, isMultiExec, tabs]); // Re-bind if multiexec changes
+
+  const handleTerminalData = useCallback((data: string, sourceTabId: string) => {
+    if (isMultiExec) {
+      tabs.forEach(tab => {
+        if (tab.ws && tab.ws.readyState === WebSocket.OPEN) {
+           tab.ws.send(JSON.stringify({ 
+             type: 'data', 
+             payload: { data, persistenceId: tab.id } 
+           }));
+        }
+      });
+    } else {
+      const tab = tabs.find(t => t.id === sourceTabId);
+      if (tab?.ws && tab.ws.readyState === WebSocket.OPEN) {
+        tab.ws.send(JSON.stringify({ 
+          type: 'data', 
+          payload: { data, persistenceId: tab.id } 
+        }));
+      }
+    }
+  }, [isMultiExec, tabs]);
+
+  const handleTerminalResize = useCallback((rows: number, cols: number, tabId: string) => {
+    const tab = tabs.find(t => t.id === tabId);
+    if (tab?.ws && tab.ws.readyState === WebSocket.OPEN) {
+      tab.ws.send(JSON.stringify({ 
+        type: 'resize', 
+        payload: { rows, cols, persistenceId: tabId } 
+      }));
+    }
+  }, [tabs]);
 
   
   useEffect(() => {
@@ -348,14 +380,18 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
           position: 'relative', 
           overflow: 'hidden', 
           padding: '2px',
-          border: isActive && splitMode !== 'single' ? '1px solid #3498db' : '1px solid #333',
+          border: isMultiExec ? '2px solid #fbc02d' : (isActive && splitMode !== 'single' ? '1px solid #3498db' : '1px solid #333'),
           display: 'flex',
           minWidth: 0,
           minHeight: 0
         }}>
         {(tab.ws || tab.protocol === 'serial') ? (
           tab.protocol !== 'sftp' ? (
-            <TerminalComponent tab={tab} />
+            <TerminalComponent 
+              tab={tab} 
+              onData={(d) => handleTerminalData(d, tab.id)}
+              onResize={(r, c) => handleTerminalResize(r, c, tab.id)}
+            />
           ) : (
             <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#aaa', flexDirection: 'column', backgroundColor: '#1e1e1e' }}>
               <FileText size={48} style={{ marginBottom: '16px', opacity: 0.3 }} />
@@ -419,9 +455,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
             </div>
           )}
         </div>
-        <RibbonBtn icon={<Share2 size={22} color="#9b59b6" />} label="MultiExec" />
-
         <RibbonBtn icon={<Settings size={22} color="#95a5a6" />} label="Settings" />
+        <RibbonBtn 
+          icon={<Share2 size={22} color={isMultiExec ? "#e74c3c" : "#9b59b6"} />} 
+          label="MultiExec" 
+          onClick={() => setIsMultiExec(!isMultiExec)} 
+        />
         
         <div style={{ flex: 1 }}></div>
         <RibbonBtn icon={<HelpCircle size={22} color="#3498db" />} label="Help" onClick={() => setHelpDialogOpen(true)} />
@@ -429,6 +468,25 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
           tabs.forEach(t => closeTab(t.id));
         }} />
       </div>
+      
+      {/* MultiExec Notification Bar */}
+      {isMultiExec && (
+        <div style={{ backgroundColor: '#fff9c4', padding: '4px 20px', borderBottom: '1px solid #fbc02d', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', color: '#333' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Share2 size={16} color="#fbc02d" />
+            <b>Multi-execution mode:</b> commands are typed to all terminals (use Ctrl+Shift+Insert to paste)
+          </div>
+          <div style={{ display: 'flex', gap: '10px' }}>
+             <button style={{ padding: '2px 8px', fontSize: '11px', cursor: 'pointer', border: '1px solid #ccc', borderRadius: '3px', background: '#fff' }}>Multi-paste</button>
+             <button 
+                onClick={() => setIsMultiExec(false)}
+                style={{ padding: '2px 8px', fontSize: '11px', cursor: 'pointer', border: 'none', borderRadius: '3px', background: '#e74c3c', color: '#fff' }}
+             >
+               X Exit multi-execution mode
+             </button>
+          </div>
+        </div>
+      )}
 
       {/* Main Content Area */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>

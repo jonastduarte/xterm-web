@@ -6,6 +6,8 @@ import { TabSession } from '../App';
 
 interface TerminalComponentProps {
   tab: TabSession;
+  onData?: (data: string) => void;
+  onResize?: (rows: number, cols: number) => void;
 }
 
 // Global cache to persist terminal instances across layout changes (remounts)
@@ -23,7 +25,7 @@ export const disposeTerminalInstance = (tabId: string) => {
   }
 };
 
-const TerminalComponent: React.FC<TerminalComponentProps> = ({ tab }) => {
+const TerminalComponent: React.FC<TerminalComponentProps> = ({ tab, onData, onResize }) => {
   const { ws, protocol, session } = tab;
   const terminalRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
@@ -90,7 +92,9 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ tab }) => {
       if (!el || el.offsetWidth === 0 || el.offsetHeight === 0) return;
       try {
         fitAddon.fit();
-        if (ws && ws.readyState === WebSocket.OPEN) {
+        if (onResize) {
+          onResize(term.rows, term.cols);
+        } else if (ws && ws.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({ 
             type: 'resize', 
             payload: { rows: term.rows, cols: term.cols, persistenceId: tab.id } 
@@ -162,6 +166,8 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ tab }) => {
         const writer = serialPortRef.current.writable.getWriter();
         await writer.write(new TextEncoder().encode(data));
         writer.releaseLock();
+      } else if (onData) {
+        onData(data);
       } else if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ 
           type: 'data', 
@@ -250,10 +256,14 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ tab }) => {
         if (fitAddonRef.current) {
           try {
             fitAddonRef.current.fit();
-            ws.send(JSON.stringify({ 
-              type: 'resize', 
-              payload: { rows: term.rows, cols: term.cols, persistenceId: tab.id } 
-            }));
+            if (onResize) {
+              onResize(term.rows, term.cols);
+            } else {
+              ws.send(JSON.stringify({ 
+                type: 'resize', 
+                payload: { rows: term.rows, cols: term.cols, persistenceId: tab.id } 
+              }));
+            }
           } catch(e){}
         }
       }, 200);
@@ -269,6 +279,8 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ tab }) => {
       if (protocol === 'serial' && serialPortRef.current?.writable) {
         const writer = serialPortRef.current.writable.getWriter();
         writer.write(new TextEncoder().encode(pasteContent)).finally(() => writer.releaseLock());
+      } else if (onData) {
+        onData(pasteContent);
       } else if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ 
           type: 'data', 
