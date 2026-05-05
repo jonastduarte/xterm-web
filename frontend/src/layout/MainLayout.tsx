@@ -60,6 +60,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
   const [editingSession, setEditingSession] = useState<any>(null);
   const [isHelpDialogOpen, setHelpDialogOpen] = useState(false);
   const [isMultiExec, setIsMultiExec] = useState(false);
+  const [prevSplitMode, setPrevSplitMode] = useState<'single' | 'vertical' | 'horizontal' | 'grid'>('single');
   const [sessionDialogMode, setSessionDialogMode] = useState<'create'|'edit'|'clone'>('create');
   const [sftpPanelWidth, setSftpPanelWidth] = useState(240);
   const [showSftpPanel, setShowSftpPanel] = useState(true);
@@ -250,7 +251,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
         ));
       };
     });
-  }, [apiUrl, isMultiExec, tabs]); // Re-bind if multiexec changes
+  }, [apiUrl]); // Only re-bind on apiUrl change
 
   const handleTerminalData = useCallback((data: string, sourceTabId: string) => {
     if (isMultiExec) {
@@ -372,10 +373,37 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
     return result;
   };
 
+  // MultiExec panes: show all open terminal tabs (up to 4), no nulls
+  const getMultiExecPanes = () => {
+    const terminalTabs = tabs.filter(t => t.protocol !== 'ftp' && t.protocol !== 'sftp' && t.ws);
+    return terminalTabs.slice(0, 4);
+  };
+
+  const multiExecPanes = isMultiExec ? getMultiExecPanes() : [];
+
   let panes: (TabSession | null)[] = [];
-  if (splitMode === 'single') panes = [activeTab || null];
-  else if (splitMode === 'vertical' || splitMode === 'horizontal') panes = getPanes(2);
-  else if (splitMode === 'grid') panes = getPanes(4);
+  if (!isMultiExec) {
+    if (splitMode === 'single') panes = [activeTab || null];
+    else if (splitMode === 'vertical' || splitMode === 'horizontal') panes = getPanes(2);
+    else if (splitMode === 'grid') panes = getPanes(4);
+  }
+
+  const toggleMultiExec = () => {
+    if (!isMultiExec) {
+      // Activating MultiExec
+      const terminalTabs = tabs.filter(t => t.protocol !== 'ftp' && t.protocol !== 'sftp' && t.ws);
+      if (terminalTabs.length < 2) {
+        alert('MultiExec requires at least 2 active terminal sessions. Open more sessions first.');
+        return;
+      }
+      setPrevSplitMode(splitMode);
+      setIsMultiExec(true);
+    } else {
+      // Deactivating MultiExec — restore previous split mode
+      setIsMultiExec(false);
+      setSplitMode(prevSplitMode);
+    }
+  };
 
   const renderTerminalPane = (tab: TabSession | null) => {
     if (!tab) {
@@ -473,7 +501,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
         <RibbonBtn 
           icon={<Share2 size={22} color={isMultiExec ? "#e74c3c" : "#9b59b6"} />} 
           label="MultiExec" 
-          onClick={() => setIsMultiExec(!isMultiExec)} 
+          onClick={toggleMultiExec} 
         />
         
         <div style={{ flex: 1 }}></div>
@@ -485,18 +513,17 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
       
       {/* MultiExec Notification Bar */}
       {isMultiExec && (
-        <div style={{ backgroundColor: '#fff9c4', padding: '4px 20px', borderBottom: '1px solid #fbc02d', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', color: '#333' }}>
+        <div style={{ backgroundColor: '#fff9c4', padding: '6px 20px', borderBottom: '2px solid #fbc02d', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', color: '#333' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Share2 size={16} color="#fbc02d" />
-            <b>Multi-execution mode:</b> commands are typed to all terminals (use Ctrl+Shift+Insert to paste)
+            <Share2 size={16} color="#e67e22" />
+            <b>Multi-execution mode:</b> commands are typed to all terminals ({multiExecPanes.length} sessions active)
           </div>
           <div style={{ display: 'flex', gap: '10px' }}>
-             <button style={{ padding: '2px 8px', fontSize: '11px', cursor: 'pointer', border: '1px solid #ccc', borderRadius: '3px', background: '#fff' }}>Multi-paste</button>
              <button 
-                onClick={() => setIsMultiExec(false)}
-                style={{ padding: '2px 8px', fontSize: '11px', cursor: 'pointer', border: 'none', borderRadius: '3px', background: '#e74c3c', color: '#fff' }}
+                onClick={toggleMultiExec}
+                style={{ padding: '4px 14px', fontSize: '12px', cursor: 'pointer', border: 'none', borderRadius: '3px', background: '#e74c3c', color: '#fff', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px' }}
              >
-               X Exit multi-execution mode
+               <X size={14} /> Exit multi-execution mode
              </button>
           </div>
         </div>
@@ -871,7 +898,25 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
       {/* Terminal content area */}
       {tabs.filter(t => t.protocol !== 'ftp').length > 0 && !isFTPConnection && (
         <div style={{ flex: 1, display: 'flex', overflow: 'hidden', padding: '4px', gap: '4px', minWidth: 0, minHeight: 0 }}>
-          {splitMode === 'single' ? (
+          {isMultiExec ? (
+            /* MultiExec auto-layout: 2 = side by side, 3 = top 2 + bottom 1, 4 = 2x2 grid */
+            multiExecPanes.length <= 2 ? (
+              <div style={{ display: 'flex', flexDirection: 'row', flex: 1, gap: '4px', minWidth: 0, minHeight: 0 }}>
+                {multiExecPanes.map(t => renderTerminalPane(t))}
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: '4px', minWidth: 0, minHeight: 0 }}>
+                <div style={{ display: 'flex', flexDirection: 'row', flex: 1, gap: '4px', minWidth: 0, minHeight: 0 }}>
+                  {renderTerminalPane(multiExecPanes[0])}
+                  {renderTerminalPane(multiExecPanes[1])}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'row', flex: 1, gap: '4px', minWidth: 0, minHeight: 0 }}>
+                  {renderTerminalPane(multiExecPanes[2])}
+                  {multiExecPanes[3] ? renderTerminalPane(multiExecPanes[3]) : <div style={{ flex: 1, minWidth: 0, minHeight: 0 }} />}
+                </div>
+              </div>
+            )
+          ) : splitMode === 'single' ? (
             renderTerminalPane(panes[0])
           ) : splitMode === 'vertical' ? (
             <div style={{ display: 'flex', flexDirection: 'row', flex: 1, gap: '4px', minWidth: 0, minHeight: 0 }}>
