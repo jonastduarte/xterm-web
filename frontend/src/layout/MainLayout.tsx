@@ -895,76 +895,110 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
         </div>
       )}
 
-      {/* Terminal content area - ALL terminals are always mounted to prevent destruction */}
-      {tabs.filter(t => t.protocol !== 'ftp').length > 0 && !isFTPConnection && (
-        <div style={{ flex: 1, display: 'flex', overflow: 'hidden', padding: '4px', gap: '4px', minWidth: 0, minHeight: 0, position: 'relative' }}>
-          {isMultiExec ? (
-            /* MultiExec: show 2-4 terminals in auto-layout grid */
-            multiExecPanes.length <= 2 ? (
-              <div style={{ display: 'flex', flexDirection: 'row', flex: 1, gap: '4px', minWidth: 0, minHeight: 0 }}>
-                {multiExecPanes.map(t => (
-                  <div key={t.id} style={{ flex: 1, display: 'flex', minWidth: 0, minHeight: 0 }}>
-                    {renderTerminalPane(t)}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: '4px', minWidth: 0, minHeight: 0 }}>
-                <div style={{ display: 'flex', flexDirection: 'row', flex: 1, gap: '4px', minWidth: 0, minHeight: 0 }}>
-                  {renderTerminalPane(multiExecPanes[0])}
-                  {renderTerminalPane(multiExecPanes[1])}
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'row', flex: 1, gap: '4px', minWidth: 0, minHeight: 0 }}>
-                  {renderTerminalPane(multiExecPanes[2])}
-                  {multiExecPanes[3] ? renderTerminalPane(multiExecPanes[3]) : <div style={{ flex: 1, minWidth: 0, minHeight: 0 }} />}
-                </div>
-              </div>
-            )
-          ) : splitMode === 'single' ? (
-            /* Single mode: render ALL terminals but only show the active one.
-               This keeps all xterm instances alive and prevents freezing on tab switch. */
-            <>
-              {tabs.filter(t => t.protocol !== 'ftp' && t.protocol !== 'sftp').map(tab => (
-                <div 
+      {/* Terminal content area - ALL terminals always mounted, CSS controls visibility */}
+      {tabs.filter(t => t.protocol !== 'ftp').length > 0 && !isFTPConnection && (() => {
+        // Determine which tab IDs should be visible and in what positions
+        const terminalTabs = tabs.filter(t => t.protocol !== 'ftp' && t.protocol !== 'sftp');
+        
+        let visibleIds: string[] = [];
+        if (isMultiExec) {
+          visibleIds = terminalTabs.filter(t => t.ws).slice(0, 4).map(t => t.id);
+        } else if (splitMode === 'single') {
+          visibleIds = activeTabId ? [activeTabId] : [];
+        } else {
+          // vertical, horizontal, grid
+          const count = (splitMode === 'vertical' || splitMode === 'horizontal') ? 2 : 4;
+          const p = [...terminalTabs];
+          const activeIdx = p.findIndex(t => t.id === activeTabId);
+          if (activeIdx >= count && p.length > 0) {
+            const temp = p[0];
+            p[0] = p[activeIdx];
+            p[activeIdx] = temp;
+          }
+          visibleIds = p.slice(0, count).map(t => t.id);
+        }
+        
+        const visibleCount = visibleIds.length;
+        
+        // Determine layout: how many rows/cols
+        let layoutMode: 'single' | 'row' | 'col' | 'grid' = 'single';
+        if (isMultiExec) {
+          layoutMode = visibleCount <= 2 ? 'row' : 'grid';
+        } else if (splitMode === 'vertical') {
+          layoutMode = 'row';
+        } else if (splitMode === 'horizontal') {
+          layoutMode = 'col';
+        } else if (splitMode === 'grid') {
+          layoutMode = 'grid';
+        }
+        
+        // Calculate CSS grid template
+        let gridStyle: React.CSSProperties = { flex: 1, position: 'relative', overflow: 'hidden', padding: '4px', minWidth: 0, minHeight: 0 };
+        if (layoutMode === 'single') {
+          gridStyle = { ...gridStyle, display: 'flex' };
+        } else if (layoutMode === 'row') {
+          gridStyle = { ...gridStyle, display: 'grid', gridTemplateColumns: `repeat(${visibleCount}, 1fr)`, gridTemplateRows: '1fr', gap: '4px' };
+        } else if (layoutMode === 'col') {
+          gridStyle = { ...gridStyle, display: 'grid', gridTemplateColumns: '1fr', gridTemplateRows: `repeat(${visibleCount}, 1fr)`, gap: '4px' };
+        } else if (layoutMode === 'grid') {
+          gridStyle = { ...gridStyle, display: 'grid', gridTemplateColumns: '1fr 1fr', gridTemplateRows: `repeat(${Math.ceil(visibleCount / 2)}, 1fr)`, gap: '4px' };
+        }
+
+        return (
+          <div style={gridStyle}>
+            {terminalTabs.map(tab => {
+              const isVisible = visibleIds.includes(tab.id);
+              const isActive = tab.id === activeTabId;
+              return (
+                <div
                   key={tab.id}
-                  style={{ 
-                    flex: 1,
-                    display: tab.id === activeTabId ? 'flex' : 'none',
+                  onClick={() => setActiveTabId(tab.id)}
+                  style={{
+                    display: isVisible ? 'flex' : 'none',
+                    flex: layoutMode === 'single' ? 1 : undefined,
+                    position: 'relative',
+                    overflow: 'hidden',
+                    padding: '2px',
+                    border: isMultiExec ? '2px solid #fbc02d' : (isActive && splitMode !== 'single' ? '1px solid #3498db' : '1px solid #333'),
                     minWidth: 0,
-                    minHeight: 0,
-                    position: 'relative'
+                    minHeight: 0
                   }}
                 >
-                  {renderTerminalPane(tab)}
+                  {(tab.ws || tab.protocol === 'serial') ? (
+                    <TerminalComponent
+                      tab={tab}
+                      onData={(d) => handleTerminalData(d, tab.id)}
+                      onResize={(r, c) => handleTerminalResize(r, c, tab.id)}
+                    />
+                  ) : (
+                    <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#aaa', flexDirection: 'column', backgroundColor: '#1e1e1e' }}>
+                      <Monitor size={36} style={{ marginBottom: '12px', opacity: 0.3 }} />
+                      <p style={{ fontSize: '13px' }}>Connection closed</p>
+                    </div>
+                  )}
                 </div>
-              ))}
-              {/* Also render SFTP tabs when active */}
-              {activeTab && activeTab.protocol === 'sftp' && renderTerminalPane(activeTab)}
-            </>
-          ) : splitMode === 'vertical' ? (
-            <div style={{ display: 'flex', flexDirection: 'row', flex: 1, gap: '4px', minWidth: 0, minHeight: 0 }}>
-              {renderTerminalPane(panes[0])}
-              {renderTerminalPane(panes[1])}
-            </div>
-          ) : splitMode === 'horizontal' ? (
-            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: '4px', minWidth: 0, minHeight: 0 }}>
-              {renderTerminalPane(panes[0])}
-              {renderTerminalPane(panes[1])}
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: '4px', minWidth: 0, minHeight: 0 }}>
-              <div style={{ display: 'flex', flexDirection: 'row', flex: 1, gap: '4px', minWidth: 0, minHeight: 0 }}>
-                {renderTerminalPane(panes[0])}
-                {renderTerminalPane(panes[1])}
+              );
+            })}
+            {/* SFTP tab rendering (when active) */}
+            {activeTab && activeTab.protocol === 'sftp' && (
+              <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#aaa', flexDirection: 'column', backgroundColor: '#1e1e1e' }}>
+                <FileText size={48} style={{ marginBottom: '16px', opacity: 0.3 }} />
+                <h3 style={{ margin: 0 }}>SFTP Session</h3>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'row', flex: 1, gap: '4px', minWidth: 0, minHeight: 0 }}>
-                {renderTerminalPane(panes[2])}
-                {renderTerminalPane(panes[3])}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
+            )}
+            {/* Empty panes for grid mode when we have fewer tabs than slots */}
+            {!isMultiExec && (splitMode === 'grid' || splitMode === 'vertical' || splitMode === 'horizontal') && (() => {
+              const slots = splitMode === 'grid' ? 4 : 2;
+              const empties = Math.max(0, slots - visibleCount);
+              return Array.from({ length: empties }).map((_, i) => (
+                <div key={`empty-${i}`} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#555', backgroundColor: '#1e1e1e', border: '1px solid #333', minWidth: 0, minHeight: 0 }}>
+                  Empty Pane
+                </div>
+              ));
+            })()}
+          </div>
+        );
+      })()}
 
             {/* Welcome screen when no tabs */}
             {!activeTab && (
