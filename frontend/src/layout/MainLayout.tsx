@@ -895,14 +895,18 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
         </div>
       )}
 
-      {/* Terminal content area */}
+      {/* Terminal content area - ALL terminals are always mounted to prevent destruction */}
       {tabs.filter(t => t.protocol !== 'ftp').length > 0 && !isFTPConnection && (
-        <div style={{ flex: 1, display: 'flex', overflow: 'hidden', padding: '4px', gap: '4px', minWidth: 0, minHeight: 0 }}>
+        <div style={{ flex: 1, display: 'flex', overflow: 'hidden', padding: '4px', gap: '4px', minWidth: 0, minHeight: 0, position: 'relative' }}>
           {isMultiExec ? (
-            /* MultiExec auto-layout: 2 = side by side, 3 = top 2 + bottom 1, 4 = 2x2 grid */
+            /* MultiExec: show 2-4 terminals in auto-layout grid */
             multiExecPanes.length <= 2 ? (
               <div style={{ display: 'flex', flexDirection: 'row', flex: 1, gap: '4px', minWidth: 0, minHeight: 0 }}>
-                {multiExecPanes.map(t => renderTerminalPane(t))}
+                {multiExecPanes.map(t => (
+                  <div key={t.id} style={{ flex: 1, display: 'flex', minWidth: 0, minHeight: 0 }}>
+                    {renderTerminalPane(t)}
+                  </div>
+                ))}
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: '4px', minWidth: 0, minHeight: 0 }}>
@@ -917,7 +921,26 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
               </div>
             )
           ) : splitMode === 'single' ? (
-            renderTerminalPane(panes[0])
+            /* Single mode: render ALL terminals but only show the active one.
+               This keeps all xterm instances alive and prevents freezing on tab switch. */
+            <>
+              {tabs.filter(t => t.protocol !== 'ftp' && t.protocol !== 'sftp').map(tab => (
+                <div 
+                  key={tab.id}
+                  style={{ 
+                    flex: 1,
+                    display: tab.id === activeTabId ? 'flex' : 'none',
+                    minWidth: 0,
+                    minHeight: 0,
+                    position: 'relative'
+                  }}
+                >
+                  {renderTerminalPane(tab)}
+                </div>
+              ))}
+              {/* Also render SFTP tabs when active */}
+              {activeTab && activeTab.protocol === 'sftp' && renderTerminalPane(activeTab)}
+            </>
           ) : splitMode === 'vertical' ? (
             <div style={{ display: 'flex', flexDirection: 'row', flex: 1, gap: '4px', minWidth: 0, minHeight: 0 }}>
               {renderTerminalPane(panes[0])}

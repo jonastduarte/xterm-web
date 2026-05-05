@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import 'xterm/css/xterm.css';
@@ -10,19 +10,16 @@ interface TerminalComponentProps {
   onResize?: (rows: number, cols: number) => void;
 }
 
-// Global cache to persist terminal instances across layout changes (remounts)
-const terminalCache = new Map<string, { 
-  term: Terminal, 
-  fitAddon: FitAddon,
-  initialized: boolean 
-}>();
+// We do NOT cache Terminal instances because xterm.js does not support
+// re-opening a terminal on a different DOM element. Instead, we create
+// a fresh terminal each time the component mounts and rely on the
+// backend's history replay to restore previous output.
+//
+// To avoid re-creating terminals unnecessarily during tab switches,
+// we use React keys in the parent to keep the component mounted.
 
-export const disposeTerminalInstance = (tabId: string) => {
-  const cached = terminalCache.get(tabId);
-  if (cached) {
-    try { cached.term.dispose(); } catch(e) {}
-    terminalCache.delete(tabId);
-  }
+export const disposeTerminalInstance = (_tabId: string) => {
+  // No-op: cleanup is handled by the component's useEffect return
 };
 
 const TerminalComponent: React.FC<TerminalComponentProps> = ({ tab, onData, onResize }) => {
@@ -35,54 +32,50 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ tab, onData, onRe
   const serialReaderRef = useRef<any>(null);
   const [pasteModalOpen, setPasteModalOpen] = useState(false);
   const [pasteContent, setPasteContent] = useState('');
+  // Keep latest onData/onResize in refs so they're always current
+  const onDataRef = useRef(onData);
+  const onResizeRef = useRef(onResize);
+  onDataRef.current = onData;
+  onResizeRef.current = onResize;
 
   useEffect(() => {
-    if (!terminalRef.current) return;
-    
-    let term: Terminal;
-    let fitAddon: FitAddon;
-    
-    const cached = terminalCache.get(tab.id);
-    if (cached) {
-      term = cached.term;
-      fitAddon = cached.fitAddon;
-    } else {
-      term = new Terminal({
-        cursorBlink: true,
-        fontSize: 14,
-        fontFamily: "'Cascadia Code', 'Fira Code', 'Consolas', 'Courier New', monospace",
-        theme: {
-          background: '#1e1e1e',
-          foreground: '#d4d4d4',
-          cursor: '#aeafad',
-          cursorAccent: '#1e1e1e',
-          selectionBackground: '#264f78',
-          black: '#1e1e1e',
-          red: '#f44747',
-          green: '#6a9955',
-          yellow: '#d7ba7d',
-          blue: '#569cd6',
-          magenta: '#c586c0',
-          cyan: '#4ec9b0',
-          white: '#d4d4d4',
-          brightBlack: '#808080',
-          brightRed: '#f44747',
-          brightGreen: '#6a9955',
-          brightYellow: '#d7ba7d',
-          brightBlue: '#569cd6',
-          brightMagenta: '#c586c0',
-          brightCyan: '#4ec9b0',
-          brightWhite: '#e5e5e5'
-        },
-        scrollback: 10000,
-        convertEol: true,
-        allowProposedApi: true
-      });
+    if (!terminalRef.current || initializedRef.current) return;
+    initializedRef.current = true;
 
-      fitAddon = new FitAddon();
-      term.loadAddon(fitAddon);
-      terminalCache.set(tab.id, { term, fitAddon, initialized: false });
-    }
+    const term = new Terminal({
+      cursorBlink: true,
+      fontSize: 14,
+      fontFamily: "'Cascadia Code', 'Fira Code', 'Consolas', 'Courier New', monospace",
+      theme: {
+        background: '#1e1e1e',
+        foreground: '#d4d4d4',
+        cursor: '#aeafad',
+        cursorAccent: '#1e1e1e',
+        selectionBackground: '#264f78',
+        black: '#1e1e1e',
+        red: '#f44747',
+        green: '#6a9955',
+        yellow: '#d7ba7d',
+        blue: '#569cd6',
+        magenta: '#c586c0',
+        cyan: '#4ec9b0',
+        white: '#d4d4d4',
+        brightBlack: '#808080',
+        brightRed: '#f44747',
+        brightGreen: '#6a9955',
+        brightYellow: '#d7ba7d',
+        brightBlue: '#569cd6',
+        brightMagenta: '#c586c0',
+        brightCyan: '#4ec9b0',
+        brightWhite: '#e5e5e5'
+      },
+      scrollback: 10000,
+      convertEol: true,
+      allowProposedApi: true
+    });
+
+    const fitAddon = new FitAddon();
+    term.loadAddon(fitAddon);
 
     termRef.current = term;
     fitAddonRef.current = fitAddon;
@@ -92,8 +85,8 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ tab, onData, onRe
       if (!el || el.offsetWidth === 0 || el.offsetHeight === 0) return;
       try {
         fitAddon.fit();
-        if (onResize) {
-          onResize(term.rows, term.cols);
+        if (onResizeRef.current) {
+          onResizeRef.current(term.rows, term.cols);
         } else if (ws && ws.readyState === WebSocket.OPEN) {
           ws.send(JSON.stringify({ 
             type: 'resize', 
@@ -109,21 +102,17 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ tab, onData, onRe
           if (!terminalRef.current) return;
           try {
             term.open(terminalRef.current);
-            const cached = terminalCache.get(tab.id);
-            if (cached && !cached.initialized) {
-               term.writeln('\x1b[32mConnecting...\x1b[0m');
-               cached.initialized = true;
-            }
             term.focus();
           } catch (e) {
             return;
           }
+          term.writeln('\x1b[32mConnecting...\x1b[0m');
           setTimeout(() => {
             safeFit();
             term.focus();
           }, 50);
           
-          if (protocol === 'serial' && (!cached || !cached.initialized)) {
+          if (protocol === 'serial') {
             connectSerial();
           }
         });
@@ -157,17 +146,13 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ tab, onData, onRe
 
     openTerminal();
 
-    // WS listener logic moved to a separate useEffect to handle re-attachment
-    
-    // ... rest of init logic
-
     const onDataDisposable = term.onData(async data => {
       if (protocol === 'serial' && serialPortRef.current?.writable) {
         const writer = serialPortRef.current.writable.getWriter();
         await writer.write(new TextEncoder().encode(data));
         writer.releaseLock();
-      } else if (onData) {
-        onData(data);
+      } else if (onDataRef.current) {
+        onDataRef.current(data);
       } else if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ 
           type: 'data', 
@@ -208,7 +193,6 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ tab, onData, onRe
     }
 
     return () => {
-      // Keep terminal and fitAddon but remove listeners
       const termEl = terminalRef.current;
       if (termEl) {
         termEl.removeEventListener('contextmenu', handleContextMenu);
@@ -224,11 +208,12 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ tab, onData, onRe
       }
 
       onDataDisposable.dispose();
-      // We don't dispose term here to allow persistence if possible, 
-      // but in this app it's better to recreate it if the component unmounts normally
-      // unless we want a more complex manager.
+      try { term.dispose(); } catch(_) {}
+      initializedRef.current = false;
+      termRef.current = null;
+      fitAddonRef.current = null;
     };
-  }, [protocol, session]); // Remove ws from here so it doesn't re-run just for ws change
+  }, []); // Only run once on mount — tab identity is stable via React key
 
   // Separate effect for WebSocket listeners to support re-attachment
   useEffect(() => {
@@ -256,8 +241,8 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ tab, onData, onRe
         if (fitAddonRef.current) {
           try {
             fitAddonRef.current.fit();
-            if (onResize) {
-              onResize(term.rows, term.cols);
+            if (onResizeRef.current) {
+              onResizeRef.current(term.rows, term.cols);
             } else {
               ws.send(JSON.stringify({ 
                 type: 'resize', 
@@ -279,8 +264,8 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ tab, onData, onRe
       if (protocol === 'serial' && serialPortRef.current?.writable) {
         const writer = serialPortRef.current.writable.getWriter();
         writer.write(new TextEncoder().encode(pasteContent)).finally(() => writer.releaseLock());
-      } else if (onData) {
-        onData(pasteContent);
+      } else if (onDataRef.current) {
+        onDataRef.current(pasteContent);
       } else if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ 
           type: 'data', 
