@@ -36,7 +36,6 @@ import {
   ZoomIn,
   ZoomOut,
   Printer,
-  Minimize2,
   Moon,
   Sun,
   Download,
@@ -91,8 +90,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
   const [termFontSize, setTermFontSize] = useState(() => parseInt(localStorage.getItem('moba_font_size') || '14'));
   // Theme
   const [theme, setTheme] = useState<'dark' | 'light'>(() => (localStorage.getItem('moba_theme') as any) || 'dark');
-  // Compact mode
-  const [compactMode, setCompactMode] = useState(false);
   // View dropdown
   const [viewDropdownOpen, setViewDropdownOpen] = useState(false);
   // Settings dropdown
@@ -103,6 +100,22 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
   const [defaultPassInput, setDefaultPassInput] = useState('');
 
   const activeTab = tabs.find(t => t.id === activeTabId) || null;
+
+  // Inject print styles for landscape orientation
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.id = 'print-styles';
+    style.textContent = `
+      @media print {
+        @page { size: landscape; margin: 5mm; }
+        body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      }
+    `;
+    if (!document.getElementById('print-styles')) {
+      document.head.appendChild(style);
+    }
+    return () => { style.remove(); };
+  }, []);
 
   useEffect(() => {
     const toSave = tabs.map(t => ({ id: t.id, session: t.session, protocol: t.protocol, label: t.label }));
@@ -519,9 +532,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
           <RibbonBtn icon={<Eye size={22} color="#2ecc71" />} label="View" onClick={() => { setViewDropdownOpen(!viewDropdownOpen); setSettingsDropdownOpen(false); setSplitDropdownOpen(false); }} />
           {viewDropdownOpen && (
             <div style={{ position: 'absolute', top: '100%', left: 0, backgroundColor: '#fff', border: '1px solid #ccc', boxShadow: '0 4px 12px rgba(0,0,0,0.2)', zIndex: 1000, display: 'flex', flexDirection: 'column', minWidth: '220px' }}>
-              <div style={splitMenuItemStyle} onClick={() => { setCompactMode(!compactMode); setViewDropdownOpen(false); }}>
-                <Minimize2 size={14} /> {compactMode ? '✓ ' : ''}Compact Mode
-              </div>
               <div style={splitMenuItemStyle} onClick={() => { document.documentElement.requestFullscreen?.(); setViewDropdownOpen(false); }}>
                 <Maximize size={14} /> Fullscreen Mode
               </div>
@@ -533,7 +543,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
                 <ZoomOut size={14} /> Zoom - (Font {termFontSize}px)
               </div>
               <div style={{ height: '1px', backgroundColor: '#eee', margin: '4px 0' }} />
-              <div style={splitMenuItemStyle} onClick={() => { window.print(); setViewDropdownOpen(false); }}>
+              <div style={splitMenuItemStyle} onClick={() => { setViewDropdownOpen(false); setTimeout(() => window.print(), 200); }}>
                 <Printer size={14} /> Print Screen
               </div>
             </div>
@@ -804,17 +814,17 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
         <div style={{ flex: 1, backgroundColor: '#1e1e1e', display: 'flex', flexDirection: 'column', position: 'relative' }}>
           
           {/* Tab Bar */}
-          <div style={{ display: 'flex', backgroundColor: '#eef0f3', borderBottom: '1px solid #d4d4d4', minHeight: compactMode ? '26px' : '32px', alignItems: 'flex-end' }}>
+          <div style={{ display: 'flex', backgroundColor: '#eef0f3', borderBottom: '1px solid #d4d4d4', minHeight: '32px', alignItems: 'flex-end' }}>
             {tabs.map(tab => (
               <div 
                 key={tab.id}
                 onClick={() => setActiveTabId(tab.id)}
                 onContextMenu={(e) => { e.preventDefault(); setTabContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
                 style={{ 
-                  padding: compactMode ? '2px 8px' : '4px 12px', 
+                  padding: '4px 12px', 
                   backgroundColor: tab.id === activeTabId ? '#5D6B78' : '#ccc',
                   color: tab.id === activeTabId ? '#FFF' : '#333',
-                  fontSize: compactMode ? '11px' : '12px', 
+                  fontSize: '12px', 
                   borderTop: tab.id === activeTabId ? '2px solid #3498db' : '2px solid transparent',
                   borderTopLeftRadius: '4px', 
                   borderTopRightRadius: '4px', 
