@@ -66,12 +66,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
   const [quickConnectState, setQuickConnectState] = useState<{ host: string; user: string; port: number; name: string } | null>(null);
   const [quickConnectPassword, setQuickConnectPassword] = useState('');
   const [hasVault, setHasVault] = useState(false);
-  const [masterPassword, setMasterPassword] = useState<string | null>(null);
+  const [masterPassword, setMasterPassword] = useState<string | null>(sessionStorage.getItem('moba_master_password'));
   const [isVaultModalOpen, setVaultModalOpen] = useState(false);
   const [vaultModalCallback, setVaultModalCallback] = useState<{ resolve: (pass: string) => void, reject: () => void } | null>(null);
   const [vaultActionType, setVaultActionType] = useState<'unlock' | 'setup'>('unlock');
   const [vaultError, setVaultError] = useState('');
   const [vaultPasswordInput, setVaultPasswordInput] = useState('');
+  const pendingPromptRef = React.useRef<Promise<string> | null>(null);
 
   const activeTab = tabs.find(t => t.id === activeTabId) || null;
 
@@ -103,17 +104,28 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
   }, [apiUrl]);
 
   const promptMasterPassword = (type: 'unlock' | 'setup' = 'unlock'): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      if (type === 'unlock' && masterPassword) {
-        resolve(masterPassword);
-        return;
-      }
+    if (type === 'unlock' && masterPassword) return Promise.resolve(masterPassword);
+    if (pendingPromptRef.current) return pendingPromptRef.current;
+
+    const promise = new Promise<string>((resolve, reject) => {
       setVaultActionType(type);
       setVaultPasswordInput('');
       setVaultError('');
       setVaultModalOpen(true);
-      setVaultModalCallback({ resolve, reject });
+      setVaultModalCallback({ 
+        resolve: (pass) => {
+          pendingPromptRef.current = null;
+          resolve(pass);
+        }, 
+        reject: () => {
+          pendingPromptRef.current = null;
+          reject();
+        } 
+      });
     });
+
+    pendingPromptRef.current = promise;
+    return promise;
   };
 
   const handleVaultSubmit = async () => {
@@ -126,6 +138,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
         });
         if (!res.ok) throw new Error(await res.text());
         setMasterPassword(vaultPasswordInput);
+        sessionStorage.setItem('moba_master_password', vaultPasswordInput);
         setHasVault(true);
         setVaultModalOpen(false);
         vaultModalCallback?.resolve(vaultPasswordInput);
@@ -140,6 +153,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
         const data = await res.json();
         if (data.valid) {
           setMasterPassword(vaultPasswordInput);
+          sessionStorage.setItem('moba_master_password', vaultPasswordInput);
           setVaultModalOpen(false);
           vaultModalCallback?.resolve(vaultPasswordInput);
         } else {
