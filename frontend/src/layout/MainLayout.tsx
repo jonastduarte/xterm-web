@@ -30,7 +30,18 @@ import {
   Globe,
   Lock,
   Users,
-  Clock
+  Clock,
+  Copy,
+  Maximize,
+  ZoomIn,
+  ZoomOut,
+  Printer,
+  Minimize2,
+  Moon,
+  Sun,
+  Download,
+  Upload,
+  Key
 } from 'lucide-react';
 
 interface MainLayoutProps {
@@ -74,6 +85,22 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
   const [vaultError, setVaultError] = useState('');
   const [vaultPasswordInput, setVaultPasswordInput] = useState('');
   const pendingPromptRef = React.useRef<Promise<string> | null>(null);
+  // Tab context menu
+  const [tabContextMenu, setTabContextMenu] = useState<{ x: number; y: number; tabId: string } | null>(null);
+  // Terminal font size
+  const [termFontSize, setTermFontSize] = useState(() => parseInt(localStorage.getItem('moba_font_size') || '14'));
+  // Theme
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => (localStorage.getItem('moba_theme') as any) || 'dark');
+  // Compact mode
+  const [compactMode, setCompactMode] = useState(false);
+  // View dropdown
+  const [viewDropdownOpen, setViewDropdownOpen] = useState(false);
+  // Settings dropdown
+  const [settingsDropdownOpen, setSettingsDropdownOpen] = useState(false);
+  // Default password
+  const [defaultPassword, setDefaultPassword] = useState(localStorage.getItem('moba_default_password') || '');
+  const [showDefaultPassModal, setShowDefaultPassModal] = useState(false);
+  const [defaultPassInput, setDefaultPassInput] = useState('');
 
   const activeTab = tabs.find(t => t.id === activeTabId) || null;
 
@@ -433,6 +460,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
               tab={tab} 
               onData={(d) => handleTerminalData(d, tab.id)}
               onResize={(r, c) => handleTerminalResize(r, c, tab.id)}
+              fontSize={termFontSize}
+              termTheme={theme}
             />
           ) : (
             <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#aaa', flexDirection: 'column', backgroundColor: '#1e1e1e' }}>
@@ -484,12 +513,36 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
         <RibbonBtn icon={<Globe size={22} color="#f39c12" />} label="FTP" onClick={() => { setEditingSession({ protocol: 'ftp', port: 21 }); setSessionDialogMode('create'); setSessionDialogOpen(true); }} />
         <RibbonBtn icon={<Monitor size={22} color="#16a085" />} label="Telnet" onClick={() => { setEditingSession({ protocol: 'telnet', port: 23 }); setSessionDialogMode('create'); setSessionDialogOpen(true); }} />
         <div style={{ width: '1px', height: '36px', backgroundColor: '#d3d3d3', margin: '0 2px' }} />
-        <RibbonBtn icon={<FolderOpen size={22} color="#f1c40f" />} label="Sessions" />
-        <RibbonBtn icon={<Eye size={22} color="#2ecc71" />} label="View" />
+        <RibbonBtn icon={<FolderOpen size={22} color="#f1c40f" />} label="Sessions" onClick={() => setSidebarTab('sessions')} />
+        {/* View dropdown */}
         <div style={{ position: 'relative' }}>
-          <RibbonBtn icon={<LayoutGrid size={22} color="#3498db" />} label="Split" onClick={() => setSplitDropdownOpen(!splitDropdownOpen)} />
+          <RibbonBtn icon={<Eye size={22} color="#2ecc71" />} label="View" onClick={() => { setViewDropdownOpen(!viewDropdownOpen); setSettingsDropdownOpen(false); setSplitDropdownOpen(false); }} />
+          {viewDropdownOpen && (
+            <div style={{ position: 'absolute', top: '100%', left: 0, backgroundColor: '#fff', border: '1px solid #ccc', boxShadow: '0 4px 12px rgba(0,0,0,0.2)', zIndex: 1000, display: 'flex', flexDirection: 'column', minWidth: '220px' }}>
+              <div style={splitMenuItemStyle} onClick={() => { setCompactMode(!compactMode); setViewDropdownOpen(false); }}>
+                <Minimize2 size={14} /> {compactMode ? '✓ ' : ''}Compact Mode
+              </div>
+              <div style={splitMenuItemStyle} onClick={() => { document.documentElement.requestFullscreen?.(); setViewDropdownOpen(false); }}>
+                <Maximize size={14} /> Fullscreen Mode
+              </div>
+              <div style={{ height: '1px', backgroundColor: '#eee', margin: '4px 0' }} />
+              <div style={splitMenuItemStyle} onClick={() => { setTermFontSize(s => { const n = Math.min(24, s + 1); localStorage.setItem('moba_font_size', String(n)); return n; }); setViewDropdownOpen(false); }}>
+                <ZoomIn size={14} /> Zoom + (Font {termFontSize}px)
+              </div>
+              <div style={splitMenuItemStyle} onClick={() => { setTermFontSize(s => { const n = Math.max(8, s - 1); localStorage.setItem('moba_font_size', String(n)); return n; }); setViewDropdownOpen(false); }}>
+                <ZoomOut size={14} /> Zoom - (Font {termFontSize}px)
+              </div>
+              <div style={{ height: '1px', backgroundColor: '#eee', margin: '4px 0' }} />
+              <div style={splitMenuItemStyle} onClick={() => { window.print(); setViewDropdownOpen(false); }}>
+                <Printer size={14} /> Print Screen
+              </div>
+            </div>
+          )}
+        </div>
+        <div style={{ position: 'relative' }}>
+          <RibbonBtn icon={<LayoutGrid size={22} color="#3498db" />} label="Split" onClick={() => { setSplitDropdownOpen(!splitDropdownOpen); setViewDropdownOpen(false); setSettingsDropdownOpen(false); }} />
           {splitDropdownOpen && (
-            <div style={{ position: 'absolute', top: '100%', left: 0, backgroundColor: '#fff', border: '1px solid #ccc', boxShadow: '0 4px 12px rgba(0,0,0,0.2)', zIndex: 1000, display: 'flex', flexDirection: 'column', minWidth: '180px' }}>
+            <div style={{ position: 'absolute', top: '100%', left: 0, backgroundColor: '#fff', border: '1px solid #ccc', boxShadow: '0 4px 12px rgba(0,0,0,0.2)', zIndex: 1000, display: 'flex', flexDirection: 'column', minWidth: '220px' }}>
               <div style={splitMenuItemStyle} onClick={() => { setSplitMode('single'); setSplitDropdownOpen(false); }}>Single terminal mode</div>
               <div style={splitMenuItemStyle} onClick={() => { setSplitMode('vertical'); setSplitDropdownOpen(false); }}>2 terminals mode (vertical split)</div>
               <div style={splitMenuItemStyle} onClick={() => { setSplitMode('horizontal'); setSplitDropdownOpen(false); }}>2 terminals mode (horizontal split)</div>
@@ -497,7 +550,35 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
             </div>
           )}
         </div>
-        <RibbonBtn icon={<Settings size={22} color="#95a5a6" />} label="Settings" />
+        {/* Settings dropdown */}
+        <div style={{ position: 'relative' }}>
+          <RibbonBtn icon={<Settings size={22} color="#95a5a6" />} label="Settings" onClick={() => { setSettingsDropdownOpen(!settingsDropdownOpen); setViewDropdownOpen(false); setSplitDropdownOpen(false); }} />
+          {settingsDropdownOpen && (
+            <div style={{ position: 'absolute', top: '100%', left: 0, backgroundColor: '#fff', border: '1px solid #ccc', boxShadow: '0 4px 12px rgba(0,0,0,0.2)', zIndex: 1000, display: 'flex', flexDirection: 'column', minWidth: '240px' }}>
+              <div style={splitMenuItemStyle} onClick={() => { const t = theme === 'dark' ? 'light' : 'dark'; setTheme(t); localStorage.setItem('moba_theme', t); setSettingsDropdownOpen(false); }}>
+                {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />} Theme: {theme === 'dark' ? 'Dark' : 'Light'} (toggle)
+              </div>
+              <div style={{ height: '1px', backgroundColor: '#eee', margin: '4px 0' }} />
+              <div style={splitMenuItemStyle} onClick={() => { promptMasterPassword(hasVault ? 'unlock' : 'setup'); setSettingsDropdownOpen(false); }}>
+                <Lock size={14} /> Password Vault {hasVault ? '(Unlock)' : '(Setup)'}
+              </div>
+              <div style={splitMenuItemStyle} onClick={() => { setSidebarTab('users'); setSettingsDropdownOpen(false); }}>
+                <Users size={14} /> User Manager
+              </div>
+              <div style={{ height: '1px', backgroundColor: '#eee', margin: '4px 0' }} />
+              <div style={splitMenuItemStyle} onClick={() => { setShowDefaultPassModal(true); setDefaultPassInput(defaultPassword); setSettingsDropdownOpen(false); }}>
+                <Key size={14} /> Default Password
+              </div>
+              <div style={{ height: '1px', backgroundColor: '#eee', margin: '4px 0' }} />
+              <div style={splitMenuItemStyle} onClick={() => { const data = JSON.stringify({ tabs: tabs.map(t => ({ session: t.session, protocol: t.protocol, label: t.label })), settings: { theme, termFontSize, defaultPassword } }); const blob = new Blob([data], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'xterm-web-config.json'; a.click(); setSettingsDropdownOpen(false); }}>
+                <Download size={14} /> Export Configuration
+              </div>
+              <div style={splitMenuItemStyle} onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = '.json'; input.onchange = (e: any) => { const file = e.target.files[0]; if (file) { const reader = new FileReader(); reader.onload = (ev) => { try { const cfg = JSON.parse(ev.target?.result as string); if (cfg.settings) { if (cfg.settings.theme) { setTheme(cfg.settings.theme); localStorage.setItem('moba_theme', cfg.settings.theme); } if (cfg.settings.termFontSize) { setTermFontSize(cfg.settings.termFontSize); localStorage.setItem('moba_font_size', String(cfg.settings.termFontSize)); } if (cfg.settings.defaultPassword) { setDefaultPassword(cfg.settings.defaultPassword); localStorage.setItem('moba_default_password', cfg.settings.defaultPassword); } } alert('Configuration imported successfully!'); } catch { alert('Invalid config file'); } }; reader.readAsText(file); } }; input.click(); setSettingsDropdownOpen(false); }}>
+                <Upload size={14} /> Import Configuration
+              </div>
+            </div>
+          )}
+        </div>
         <RibbonBtn 
           icon={<Share2 size={22} color={isMultiExec ? "#e74c3c" : "#9b59b6"} />} 
           label="MultiExec" 
@@ -723,16 +804,17 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
         <div style={{ flex: 1, backgroundColor: '#1e1e1e', display: 'flex', flexDirection: 'column', position: 'relative' }}>
           
           {/* Tab Bar */}
-          <div style={{ display: 'flex', backgroundColor: '#eef0f3', borderBottom: '1px solid #d4d4d4', minHeight: '32px', alignItems: 'flex-end' }}>
+          <div style={{ display: 'flex', backgroundColor: '#eef0f3', borderBottom: '1px solid #d4d4d4', minHeight: compactMode ? '26px' : '32px', alignItems: 'flex-end' }}>
             {tabs.map(tab => (
               <div 
                 key={tab.id}
                 onClick={() => setActiveTabId(tab.id)}
+                onContextMenu={(e) => { e.preventDefault(); setTabContextMenu({ x: e.clientX, y: e.clientY, tabId: tab.id }); }}
                 style={{ 
-                  padding: '4px 12px', 
+                  padding: compactMode ? '2px 8px' : '4px 12px', 
                   backgroundColor: tab.id === activeTabId ? '#5D6B78' : '#ccc',
                   color: tab.id === activeTabId ? '#FFF' : '#333',
-                  fontSize: '12px', 
+                  fontSize: compactMode ? '11px' : '12px', 
                   borderTop: tab.id === activeTabId ? '2px solid #3498db' : '2px solid transparent',
                   borderTopLeftRadius: '4px', 
                   borderTopRightRadius: '4px', 
@@ -766,6 +848,35 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
               <Plus size={14} />
             </div>
           </div>
+
+          {/* Tab Context Menu */}
+          {tabContextMenu && (
+            <>
+              <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 999 }} onClick={() => setTabContextMenu(null)} />
+              <div style={{ position: 'fixed', top: tabContextMenu.y, left: tabContextMenu.x, backgroundColor: '#fff', border: '1px solid #ccc', boxShadow: '0 4px 12px rgba(0,0,0,0.2)', zIndex: 1000, display: 'flex', flexDirection: 'column', minWidth: '180px', borderRadius: '4px', overflow: 'hidden' }}>
+                <div style={splitMenuItemStyle} onClick={() => { closeTab(tabContextMenu.tabId); setTabContextMenu(null); }}>
+                  <X size={14} /> Close
+                </div>
+                <div style={splitMenuItemStyle} onClick={() => { const tab = tabs.find(t => t.id === tabContextMenu.tabId); if (tab?.session) createConnection(tab.session); setTabContextMenu(null); }}>
+                  <Copy size={14} /> Duplicate
+                </div>
+                <div style={splitMenuItemStyle} onClick={() => { const el = document.documentElement; el.requestFullscreen?.(); setTabContextMenu(null); }}>
+                  <Maximize size={14} /> Fullscreen
+                </div>
+                <div style={{ height: '1px', backgroundColor: '#eee', margin: '2px 0' }} />
+                <div style={splitMenuItemStyle} onClick={() => { setTermFontSize(s => { const n = Math.min(24, s + 1); localStorage.setItem('moba_font_size', String(n)); return n; }); setTabContextMenu(null); }}>
+                  <ZoomIn size={14} /> Increase Font
+                </div>
+                <div style={splitMenuItemStyle} onClick={() => { setTermFontSize(s => { const n = Math.max(8, s - 1); localStorage.setItem('moba_font_size', String(n)); return n; }); setTabContextMenu(null); }}>
+                  <ZoomOut size={14} /> Decrease Font
+                </div>
+                <div style={{ height: '1px', backgroundColor: '#eee', margin: '2px 0' }} />
+                <div style={{ ...splitMenuItemStyle, color: '#e74c3c' }} onClick={() => { tabs.forEach(t => closeTab(t.id)); setTabContextMenu(null); }}>
+                  <X size={14} /> Close All Tabs
+                </div>
+              </div>
+            </>
+          )}
           
           {/* Terminal Workspace Area */}
           <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
@@ -969,6 +1080,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
                       tab={tab}
                       onData={(d) => handleTerminalData(d, tab.id)}
                       onResize={(r, c) => handleTerminalResize(r, c, tab.id)}
+                      fontSize={termFontSize}
+                      termTheme={theme}
                     />
                   ) : (
                     <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#aaa', flexDirection: 'column', backgroundColor: '#1e1e1e' }}>
@@ -1035,6 +1148,35 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
            {activeTab && !activeTab.ws && <span style={{ color: '#e74c3c' }}>○ Disconnected</span>}
          </div>
       </div>
+
+      {/* Default Password Modal */}
+      {showDefaultPassModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1200 }}>
+          <div style={{ width: '380px', backgroundColor: '#fff', borderRadius: '8px', boxShadow: '0 8px 32px rgba(0,0,0,0.3)', padding: '24px', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+              <Key size={20} color="#e67e22" />
+              <h4 style={{ margin: 0, color: '#333', fontSize: '16px' }}>Default Password</h4>
+            </div>
+            <p style={{ margin: '0 0 16px 0', color: '#666', fontSize: '12px', lineHeight: '1.4' }}>
+              Set a default password that will be used for all sessions that don't have their own credentials configured.
+            </p>
+            <input
+              autoFocus
+              type="password"
+              placeholder="Default password..."
+              value={defaultPassInput}
+              onChange={e => setDefaultPassInput(e.target.value)}
+              style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '4px', marginBottom: '16px', outline: 'none', fontSize: '14px' }}
+              onKeyDown={e => { if (e.key === 'Enter') { setDefaultPassword(defaultPassInput); localStorage.setItem('moba_default_password', defaultPassInput); setShowDefaultPassModal(false); } }}
+            />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <button onClick={() => setShowDefaultPassModal(false)} style={{ padding: '8px 16px', border: '1px solid #ccc', background: '#fff', cursor: 'pointer', borderRadius: '4px', fontSize: '12px' }}>Cancel</button>
+              <button onClick={() => { setDefaultPassword(defaultPassInput); localStorage.setItem('moba_default_password', defaultPassInput); setShowDefaultPassModal(false); }} style={{ padding: '8px 16px', border: 'none', background: '#005a9e', color: '#fff', cursor: 'pointer', borderRadius: '4px', fontSize: '12px' }}>Save</button>
+              {defaultPassword && <button onClick={() => { setDefaultPassword(''); localStorage.removeItem('moba_default_password'); setDefaultPassInput(''); setShowDefaultPassModal(false); }} style={{ padding: '8px 16px', border: '1px solid #e74c3c', background: '#fff', color: '#e74c3c', cursor: 'pointer', borderRadius: '4px', fontSize: '12px' }}>Clear</button>}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -1088,7 +1230,10 @@ const splitMenuItemStyle: React.CSSProperties = {
   cursor: 'pointer',
   fontSize: '12px',
   color: '#333',
-  borderBottom: '1px solid #f0f0f0'
+  borderBottom: '1px solid #f0f0f0',
+  display: 'flex',
+  alignItems: 'center',
+  gap: '8px'
 };
 
 const btnSmallStyle: React.CSSProperties = {

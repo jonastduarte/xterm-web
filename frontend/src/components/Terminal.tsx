@@ -8,6 +8,8 @@ interface TerminalComponentProps {
   tab: TabSession;
   onData?: (data: string) => void;
   onResize?: (rows: number, cols: number) => void;
+  fontSize?: number;
+  termTheme?: 'dark' | 'light';
 }
 
 // We do NOT cache Terminal instances because xterm.js does not support
@@ -22,7 +24,7 @@ export const disposeTerminalInstance = (_tabId: string) => {
   // No-op: cleanup is handled by the component's useEffect return
 };
 
-const TerminalComponent: React.FC<TerminalComponentProps> = ({ tab, onData, onResize }) => {
+const TerminalComponent: React.FC<TerminalComponentProps> = ({ tab, onData, onResize, fontSize = 14, termTheme = 'dark' }) => {
   const { ws, protocol, session } = tab;
   const terminalRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
@@ -38,13 +40,45 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ tab, onData, onRe
   onDataRef.current = onData;
   onResizeRef.current = onResize;
 
+  // Dynamic font size and theme updates
+  useEffect(() => {
+    if (!termRef.current) return;
+    termRef.current.options.fontSize = fontSize;
+    if (fitAddonRef.current) {
+      try { fitAddonRef.current.fit(); } catch(_) {}
+    }
+  }, [fontSize]);
+
+  useEffect(() => {
+    if (!termRef.current) return;
+    const darkTheme = {
+      background: '#1e1e1e', foreground: '#d4d4d4', cursor: '#aeafad',
+      cursorAccent: '#1e1e1e', selectionBackground: '#264f78',
+      black: '#1e1e1e', red: '#f44747', green: '#6a9955', yellow: '#d7ba7d',
+      blue: '#569cd6', magenta: '#c586c0', cyan: '#4ec9b0', white: '#d4d4d4',
+      brightBlack: '#808080', brightRed: '#f44747', brightGreen: '#6a9955',
+      brightYellow: '#d7ba7d', brightBlue: '#569cd6', brightMagenta: '#c586c0',
+      brightCyan: '#4ec9b0', brightWhite: '#e5e5e5'
+    };
+    const lightTheme = {
+      background: '#ffffff', foreground: '#1e1e1e', cursor: '#333333',
+      cursorAccent: '#ffffff', selectionBackground: '#add6ff',
+      black: '#000000', red: '#cd3131', green: '#008000', yellow: '#795e26',
+      blue: '#0451a5', magenta: '#bc05bc', cyan: '#0598bc', white: '#d4d4d4',
+      brightBlack: '#666666', brightRed: '#cd3131', brightGreen: '#008000',
+      brightYellow: '#795e26', brightBlue: '#0451a5', brightMagenta: '#bc05bc',
+      brightCyan: '#0598bc', brightWhite: '#1e1e1e'
+    };
+    termRef.current.options.theme = termTheme === 'light' ? lightTheme : darkTheme;
+  }, [termTheme]);
+
   useEffect(() => {
     if (!terminalRef.current || initializedRef.current) return;
     initializedRef.current = true;
 
     const term = new Terminal({
       cursorBlink: true,
-      fontSize: 14,
+      fontSize: fontSize,
       fontFamily: "'Cascadia Code', 'Fira Code', 'Consolas', 'Courier New', monospace",
       theme: {
         background: '#1e1e1e',
