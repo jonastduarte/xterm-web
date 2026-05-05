@@ -94,10 +94,14 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
   const [viewDropdownOpen, setViewDropdownOpen] = useState(false);
   // Settings dropdown
   const [settingsDropdownOpen, setSettingsDropdownOpen] = useState(false);
-  // Default password
+  // Default credentials
+  const [defaultCredsEnabled, setDefaultCredsEnabled] = useState(() => localStorage.getItem('moba_default_creds_enabled') === 'true');
+  const [defaultUsername, setDefaultUsername] = useState(localStorage.getItem('moba_default_username') || '');
   const [defaultPassword, setDefaultPassword] = useState(localStorage.getItem('moba_default_password') || '');
   const [showDefaultPassModal, setShowDefaultPassModal] = useState(false);
   const [defaultPassInput, setDefaultPassInput] = useState('');
+  const [defaultUserInput, setDefaultUserInput] = useState('');
+  const [defaultCredsEnabledInput, setDefaultCredsEnabledInput] = useState(false);
 
   const activeTab = tabs.find(t => t.id === activeTabId) || null;
 
@@ -573,11 +577,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
                 <Lock size={14} /> Password Vault {hasVault ? '(Unlock)' : '(Setup)'}
               </div>
               <div style={splitMenuItemStyle} onClick={() => { setSidebarTab('users'); setSettingsDropdownOpen(false); }}>
-                <Users size={14} /> User Manager
+                <Users size={14} /> System User Manager
               </div>
               <div style={{ height: '1px', backgroundColor: '#eee', margin: '4px 0' }} />
-              <div style={splitMenuItemStyle} onClick={() => { setShowDefaultPassModal(true); setDefaultPassInput(defaultPassword); setSettingsDropdownOpen(false); }}>
-                <Key size={14} /> Default Password
+              <div style={splitMenuItemStyle} onClick={() => { setShowDefaultPassModal(true); setDefaultUserInput(defaultUsername); setDefaultPassInput(defaultPassword); setDefaultCredsEnabledInput(defaultCredsEnabled); setSettingsDropdownOpen(false); }}>
+                <Key size={14} /> Default Credentials {defaultCredsEnabled ? '(Active)' : '(Disabled)'}
               </div>
               <div style={{ height: '1px', backgroundColor: '#eee', margin: '4px 0' }} />
               <div style={splitMenuItemStyle} onClick={() => { const data = JSON.stringify({ tabs: tabs.map(t => ({ session: t.session, protocol: t.protocol, label: t.label })), settings: { theme, termFontSize, defaultPassword } }); const blob = new Blob([data], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'xterm-web-config.json'; a.click(); setSettingsDropdownOpen(false); }}>
@@ -1159,30 +1163,83 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
          </div>
       </div>
 
-      {/* Default Password Modal */}
+      {/* Default Credentials Modal */}
       {showDefaultPassModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1200 }}>
-          <div style={{ width: '380px', backgroundColor: '#fff', borderRadius: '8px', boxShadow: '0 8px 32px rgba(0,0,0,0.3)', padding: '24px', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ width: '420px', backgroundColor: '#fff', borderRadius: '8px', boxShadow: '0 8px 32px rgba(0,0,0,0.3)', padding: '24px', display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
               <Key size={20} color="#e67e22" />
-              <h4 style={{ margin: 0, color: '#333', fontSize: '16px' }}>Default Password</h4>
+              <h4 style={{ margin: 0, color: '#333', fontSize: '16px' }}>Default Credentials</h4>
             </div>
             <p style={{ margin: '0 0 16px 0', color: '#666', fontSize: '12px', lineHeight: '1.4' }}>
-              Set a default password that will be used for all sessions that don't have their own credentials configured.
+              Set default credentials (user and password) that will be used for all sessions created without their own login information.
             </p>
-            <input
-              autoFocus
-              type="password"
-              placeholder="Default password..."
-              value={defaultPassInput}
-              onChange={e => setDefaultPassInput(e.target.value)}
-              style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '4px', marginBottom: '16px', outline: 'none', fontSize: '14px' }}
-              onKeyDown={e => { if (e.key === 'Enter') { setDefaultPassword(defaultPassInput); localStorage.setItem('moba_default_password', defaultPassInput); setShowDefaultPassModal(false); } }}
-            />
+
+            {/* Enable/Disable toggle */}
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', cursor: 'pointer', fontSize: '13px', color: '#333' }}>
+              <input
+                type="checkbox"
+                checked={defaultCredsEnabledInput}
+                onChange={e => setDefaultCredsEnabledInput(e.target.checked)}
+                style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+              />
+              Enable default credentials for sessions without login
+            </label>
+
+            <div style={{ opacity: defaultCredsEnabledInput ? 1 : 0.4, pointerEvents: defaultCredsEnabledInput ? 'auto' : 'none' }}>
+              <label style={{ fontSize: '12px', color: '#555', marginBottom: '4px', display: 'block' }}>Username</label>
+              <input
+                autoFocus
+                type="text"
+                placeholder="Default username..."
+                value={defaultUserInput}
+                onChange={e => setDefaultUserInput(e.target.value)}
+                style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '4px', marginBottom: '12px', outline: 'none', fontSize: '14px', width: '100%', boxSizing: 'border-box' }}
+              />
+              <label style={{ fontSize: '12px', color: '#555', marginBottom: '4px', display: 'block' }}>Password</label>
+              <input
+                type="password"
+                placeholder="Default password..."
+                value={defaultPassInput}
+                onChange={e => setDefaultPassInput(e.target.value)}
+                style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '4px', marginBottom: '16px', outline: 'none', fontSize: '14px', width: '100%', boxSizing: 'border-box' }}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    setDefaultCredsEnabled(defaultCredsEnabledInput);
+                    setDefaultUsername(defaultUserInput);
+                    setDefaultPassword(defaultPassInput);
+                    localStorage.setItem('moba_default_creds_enabled', String(defaultCredsEnabledInput));
+                    localStorage.setItem('moba_default_username', defaultUserInput);
+                    localStorage.setItem('moba_default_password', defaultPassInput);
+                    setShowDefaultPassModal(false);
+                  }
+                }}
+              />
+            </div>
+
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
               <button onClick={() => setShowDefaultPassModal(false)} style={{ padding: '8px 16px', border: '1px solid #ccc', background: '#fff', cursor: 'pointer', borderRadius: '4px', fontSize: '12px' }}>Cancel</button>
-              <button onClick={() => { setDefaultPassword(defaultPassInput); localStorage.setItem('moba_default_password', defaultPassInput); setShowDefaultPassModal(false); }} style={{ padding: '8px 16px', border: 'none', background: '#005a9e', color: '#fff', cursor: 'pointer', borderRadius: '4px', fontSize: '12px' }}>Save</button>
-              {defaultPassword && <button onClick={() => { setDefaultPassword(''); localStorage.removeItem('moba_default_password'); setDefaultPassInput(''); setShowDefaultPassModal(false); }} style={{ padding: '8px 16px', border: '1px solid #e74c3c', background: '#fff', color: '#e74c3c', cursor: 'pointer', borderRadius: '4px', fontSize: '12px' }}>Clear</button>}
+              <button onClick={() => {
+                setDefaultCredsEnabled(defaultCredsEnabledInput);
+                setDefaultUsername(defaultUserInput);
+                setDefaultPassword(defaultPassInput);
+                localStorage.setItem('moba_default_creds_enabled', String(defaultCredsEnabledInput));
+                localStorage.setItem('moba_default_username', defaultUserInput);
+                localStorage.setItem('moba_default_password', defaultPassInput);
+                setShowDefaultPassModal(false);
+              }} style={{ padding: '8px 16px', border: 'none', background: '#005a9e', color: '#fff', cursor: 'pointer', borderRadius: '4px', fontSize: '12px' }}>Save</button>
+              {(defaultUsername || defaultPassword) && <button onClick={() => {
+                setDefaultCredsEnabled(false);
+                setDefaultUsername('');
+                setDefaultPassword('');
+                setDefaultUserInput('');
+                setDefaultPassInput('');
+                setDefaultCredsEnabledInput(false);
+                localStorage.removeItem('moba_default_creds_enabled');
+                localStorage.removeItem('moba_default_username');
+                localStorage.removeItem('moba_default_password');
+                setShowDefaultPassModal(false);
+              }} style={{ padding: '8px 16px', border: '1px solid #e74c3c', background: '#fff', color: '#e74c3c', cursor: 'pointer', borderRadius: '4px', fontSize: '12px' }}>Clear</button>}
             </div>
           </div>
         </div>
