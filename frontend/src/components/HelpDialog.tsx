@@ -67,11 +67,30 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ onClose }) => {
 
           <section style={{ marginBottom: '32px' }}>
             <h3 style={{ borderBottom: '2px solid #e74c3c', paddingBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px', color: '#e74c3c' }}>
-              <Lock size={20} /> Security & Vault
+              <Lock size={20} /> Security & Vault (Cofre de Senhas)
             </h3>
-            <p>Protect your credentials using the Master Password Vault.</p>
-            <div style={{ borderLeft: '4px solid #e74c3c', padding: '10px 20px', backgroundColor: '#fff5f5' }}>
-              To enable, go to the <b>Tools</b> tab in the sidebar and click <b>"Enable Vault"</b>. Once active, all your saved passwords will be encrypted.
+            <p>O Password Vault é um recurso de segurança que permite armazenar suas senhas de sessão de forma criptografada, protegidas por uma <b>Senha Mestre</b>.</p>
+            
+            <div style={{ marginTop: '15px' }}>
+              <b style={{ color: '#e74c3c' }}>1- Arquitetura de Segurança (Como Funciona)</b>
+              <ul style={{ paddingLeft: '20px', marginTop: '5px' }}>
+                <li><b>Criptografia:</b> Utiliza o algoritmo <b>AES-256-GCM</b>, um padrão de nível militar para garantir confidencialidade e integridade.</li>
+                <li><b>Derivação de Chave:</b> A chave de criptografia é gerada via <b>PBKDF2-SHA512</b> com <b>100.000 iterações</b>, tornando ataques de força bruta extremamente difíceis.</li>
+                <li><b>Armazenamento Seguro:</b> O servidor nunca armazena sua senha mestre. Apenas um hash criptográfico (scrypt) é guardado para validação.</li>
+              </ul>
+            </div>
+
+            <div style={{ marginTop: '15px' }}>
+              <b style={{ color: '#e74c3c' }}>2- Fluxo de Utilização</b>
+              <ul style={{ paddingLeft: '20px', marginTop: '5px' }}>
+                <li><b>Ativação:</b> Configure sua senha em <i>Settings → Password Vault</i> ou na aba <i>Tools</i>.</li>
+                <li><b>Desbloqueio:</b> O sistema solicitará a senha mestre ao tentar acessar credenciais salvas pela primeira vez na sessão.</li>
+                <li><b>Segurança Volátil:</b> A senha mestre é mantida apenas no <code>sessionStorage</code>, sendo apagada automaticamente ao fechar a aba ou o navegador.</li>
+              </ul>
+            </div>
+
+            <div style={{ marginTop: '15px', padding: '10px', backgroundColor: '#fff5f5', borderLeft: '4px solid #e74c3c', fontSize: '13px' }}>
+              <b>Conclusão:</b> O Password Vault garante que, mesmo em caso de acesso não autorizado ao banco de dados, suas credenciais permaneçam protegidas pela sua senha mestre única.
             </div>
           </section>
 
