@@ -1,22 +1,27 @@
 import React, { useState } from 'react';
-import { X, HelpCircle, Monitor, LayoutGrid, Lock, FileText, Clock, Settings, Users, Zap, Globe, Share2, Eye } from 'lucide-react';
+import { X, HelpCircle, Monitor, LayoutGrid, Lock, FileText, Clock, Settings, Users, Zap, Globe, Eye } from 'lucide-react';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface HelpDialogProps {
   onClose: () => void;
 }
 
-const sections = [
-  { id: 'start',     icon: <Monitor size={16} />,    label: 'Primeiros Passos' },
-  { id: 'sessions',  icon: <FileText size={16} />,   label: 'Sessões & Conexões' },
-  { id: 'split',     icon: <LayoutGrid size={16} />, label: 'Split & MultiExec' },
-  { id: 'sftp',      icon: <Globe size={16} />,      label: 'SFTP & FTP' },
-  { id: 'view',      icon: <Eye size={16} />,        label: 'View & Temas' },
-  { id: 'vault',     icon: <Lock size={16} />,       label: 'Password Vault' },
-  { id: 'settings',  icon: <Settings size={16} />,   label: 'Configurações' },
-  { id: 'users',     icon: <Users size={16} />,      label: 'Gestão de Usuários' },
-  { id: 'logs',      icon: <Clock size={16} />,      label: 'Logs & Auditoria' },
-  { id: 'shortcuts', icon: <Zap size={16} />,        label: 'Atalhos & Dicas' },
-];
+const HelpDialog: React.FC<HelpDialogProps> = ({ onClose }) => {
+  const { t } = useLanguage();
+  const [active, setActive] = useState('start');
+
+  const sections = [
+    { id: 'start',     icon: <Monitor size={16} />,    label: t('help_nav_start') },
+    { id: 'sessions',  icon: <FileText size={16} />,   label: t('help_nav_sessions') },
+    { id: 'split',     icon: <LayoutGrid size={16} />, label: t('help_nav_split') },
+    { id: 'sftp',      icon: <Globe size={16} />,      label: t('help_nav_sftp') },
+    { id: 'view',      icon: <Eye size={16} />,        label: t('help_nav_view') },
+    { id: 'vault',     icon: <Lock size={16} />,       label: t('help_nav_vault') },
+    { id: 'settings',  icon: <Settings size={16} />,   label: t('help_nav_settings') },
+    { id: 'users',     icon: <Users size={16} />,      label: t('help_nav_users') },
+    { id: 'logs',      icon: <Clock size={16} />,      label: t('help_nav_logs') },
+    { id: 'shortcuts', icon: <Zap size={16} />,        label: t('help_nav_shortcuts') },
+  ];
 
 const box = (color: string): React.CSSProperties => ({
   backgroundColor: color + '11',
@@ -42,9 +47,6 @@ const h3s = (color: string): React.CSSProperties => ({
 
 const li: React.CSSProperties = { marginBottom: 6 };
 
-const HelpDialog: React.FC<HelpDialogProps> = ({ onClose }) => {
-  const [active, setActive] = useState('start');
-
   return (
     <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.65)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 }}>
       <div style={{ width: 920, height: 680, backgroundColor: '#fff', borderRadius: 10, boxShadow: '0 12px 40px rgba(0,0,0,0.35)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -53,7 +55,7 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ onClose }) => {
         <div style={{ padding: '14px 20px', borderBottom: '1px solid #e0e0e0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'linear-gradient(135deg, #005a9e, #0078d4)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <HelpCircle size={22} color="#fff" />
-            <span style={{ color: '#fff', fontWeight: 700, fontSize: 17 }}>XTerm Web — Guia Completo do Usuário</span>
+            <span style={{ color: '#fff', fontWeight: 700, fontSize: 17 }}>{t('help_title')}</span>
           </div>
           <button onClick={onClose} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.8)', lineHeight: 1 }}>
             <X size={20} />
@@ -359,12 +361,12 @@ const HelpDialog: React.FC<HelpDialogProps> = ({ onClose }) => {
 
         {/* Footer */}
         <div style={{ padding: '10px 20px', borderTop: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8f9fa' }}>
-          <span style={{ fontSize: 12, color: '#999' }}>XTerm Web — Documentação interna v2.0</span>
+          <span style={{ fontSize: 12, color: '#999' }}>{t('help_footer')}</span>
           <button
             onClick={onClose}
             style={{ padding: '8px 28px', backgroundColor: '#0078d4', color: '#fff', border: 'none', borderRadius: 5, cursor: 'pointer', fontWeight: 600, fontSize: 13 }}
           >
-            Fechar
+            {t('help_close')}
           </button>
         </div>
 

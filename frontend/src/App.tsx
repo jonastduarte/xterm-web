@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import MainLayout from './layout/MainLayout';
 import LoginScreen from './components/LoginScreen';
+import { LanguageProvider } from './i18n/LanguageContext';
 
 export interface TabSession {
   id: string; // unique tab id
@@ -43,7 +44,11 @@ function App() {
   };
 
   if (!token) {
-    return <LoginScreen onLogin={handleLogin} apiUrl={apiUrl} />;
+    return (
+      <LanguageProvider>
+        <LoginScreen onLogin={handleLogin} apiUrl={apiUrl} />
+      </LanguageProvider>
+    );
   }
 
   let role = 'user';
@@ -58,13 +63,15 @@ function App() {
   }
 
   return (
-    <MainLayout 
-      onLogout={handleLogout}
-      apiUrl={apiUrl} 
-      username={username}
-      role={role}
-      userId={userId}
-    />
+    <LanguageProvider>
+      <MainLayout 
+        onLogout={handleLogout}
+        apiUrl={apiUrl} 
+        username={username}
+        role={role}
+        userId={userId}
+      />
+    </LanguageProvider>
   );
 }
 

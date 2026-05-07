@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useLanguage } from '../i18n/LanguageContext';
+import { LANGUAGES } from '../i18n/translations';
 import SFTPBrowser from '../components/SFTPBrowser';
 import FTPBrowser from '../components/FTPBrowser';
 import SessionTree from '../components/SessionTree';
@@ -54,6 +56,7 @@ interface MainLayoutProps {
 let tabCounter = 0;
 
 const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, role, userId }) => {
+  const { lang, setLang, t } = useLanguage();
   const [sidebarWidth, setSidebarWidth] = useState(250);
   const [sidebarTab, setSidebarTab] = useState<'sessions' | 'tools' | 'macros' | 'sftp' | 'users' | 'logs'>('sessions');
   const [tabs, setTabs] = useState<TabSession[]>(() => {
@@ -107,6 +110,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
   const viewDropdownRef = useRef<HTMLDivElement>(null);
   const splitDropdownRef = useRef<HTMLDivElement>(null);
   const settingsDropdownRef = useRef<HTMLDivElement>(null);
+  const langDropdownRef = useRef<HTMLDivElement>(null);
+  const [langDropdownOpen, setLangDropdownOpen] = useState(false);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -119,11 +124,14 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
       if (settingsDropdownOpen && settingsDropdownRef.current && !settingsDropdownRef.current.contains(event.target as Node)) {
         setSettingsDropdownOpen(false);
       }
+      if (langDropdownOpen && langDropdownRef.current && !langDropdownRef.current.contains(event.target as Node)) {
+        setLangDropdownOpen(false);
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [viewDropdownOpen, splitDropdownOpen, settingsDropdownOpen]);
+  }, [viewDropdownOpen, splitDropdownOpen, settingsDropdownOpen, langDropdownOpen]);
 
   const activeTab = tabs.find(t => t.id === activeTabId) || null;
 
@@ -529,95 +537,121 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
       {/* Ribbon Toolbar */}
       <div style={{ backgroundColor: '#eef0f3', padding: '4px 8px', borderBottom: '1px solid #d3d3d3', display: 'flex', gap: '8px', alignItems: 'center' }}>
         
-        <RibbonBtn icon={<Monitor size={22} color="#3598db" />} label="Session" onClick={() => openSessionDialog('create')} />
+        <RibbonBtn icon={<Monitor size={22} color="#3598db" />} label={t('ribbon_session')} onClick={() => openSessionDialog('create')} />
         <div style={{ width: '1px', height: '36px', backgroundColor: '#d3d3d3', margin: '0 2px' }} />
-        <RibbonBtn icon={<TerminalSquare size={22} color="#27ae60" />} label="SSH" onClick={() => openSessionDialog('create')} />
-        <RibbonBtn icon={<FileText size={22} color="#8e44ad" />} label="SFTP" onClick={() => { setEditingSession({ protocol: 'sftp' }); setSessionDialogMode('create'); setSessionDialogOpen(true); }} />
-        <RibbonBtn icon={<Globe size={22} color="#f39c12" />} label="FTP" onClick={() => { setEditingSession({ protocol: 'ftp', port: 21 }); setSessionDialogMode('create'); setSessionDialogOpen(true); }} />
-        <RibbonBtn icon={<Monitor size={22} color="#16a085" />} label="Telnet" onClick={() => { setEditingSession({ protocol: 'telnet', port: 23 }); setSessionDialogMode('create'); setSessionDialogOpen(true); }} />
+        <RibbonBtn icon={<TerminalSquare size={22} color="#27ae60" />} label={t('ribbon_ssh')} onClick={() => openSessionDialog('create')} />
+        <RibbonBtn icon={<FileText size={22} color="#8e44ad" />} label={t('ribbon_sftp')} onClick={() => { setEditingSession({ protocol: 'sftp' }); setSessionDialogMode('create'); setSessionDialogOpen(true); }} />
+        <RibbonBtn icon={<Globe size={22} color="#f39c12" />} label={t('ribbon_ftp')} onClick={() => { setEditingSession({ protocol: 'ftp', port: 21 }); setSessionDialogMode('create'); setSessionDialogOpen(true); }} />
+        <RibbonBtn icon={<Monitor size={22} color="#16a085" />} label={t('ribbon_telnet')} onClick={() => { setEditingSession({ protocol: 'telnet', port: 23 }); setSessionDialogMode('create'); setSessionDialogOpen(true); }} />
         <div style={{ width: '1px', height: '36px', backgroundColor: '#d3d3d3', margin: '0 2px' }} />
         <div style={{ position: 'relative' }} ref={viewDropdownRef}>
-          <RibbonBtn icon={<Eye size={22} color="#2ecc71" />} label="View" onClick={() => { setViewDropdownOpen(!viewDropdownOpen); setSettingsDropdownOpen(false); setSplitDropdownOpen(false); }} />
+          <RibbonBtn icon={<Eye size={22} color="#2ecc71" />} label={t('ribbon_view')} onClick={() => { setViewDropdownOpen(!viewDropdownOpen); setSettingsDropdownOpen(false); setSplitDropdownOpen(false); setLangDropdownOpen(false); }} />
           {viewDropdownOpen && (
             <div style={{ position: 'absolute', top: '100%', left: 0, backgroundColor: '#fff', border: '1px solid #ccc', boxShadow: '0 4px 12px rgba(0,0,0,0.2)', zIndex: 1000, display: 'flex', flexDirection: 'column', minWidth: '220px' }}>
               <div style={splitMenuItemStyle} onClick={() => { document.documentElement.requestFullscreen?.(); setViewDropdownOpen(false); }}>
-                <Maximize size={14} /> Fullscreen Mode
+                <Maximize size={14} /> {t('view_fullscreen')}
               </div>
               <div style={{ height: '1px', backgroundColor: '#eee', margin: '4px 0' }} />
               <div style={splitMenuItemStyle} onClick={() => { setTermFontSize(s => { const n = Math.min(24, s + 1); localStorage.setItem('moba_font_size', String(n)); return n; }); setViewDropdownOpen(false); }}>
-                <ZoomIn size={14} /> Zoom + (Font {termFontSize}px)
+                <ZoomIn size={14} /> {t('view_zoomin')} ({termFontSize}px)
               </div>
               <div style={splitMenuItemStyle} onClick={() => { setTermFontSize(s => { const n = Math.max(8, s - 1); localStorage.setItem('moba_font_size', String(n)); return n; }); setViewDropdownOpen(false); }}>
-                <ZoomOut size={14} /> Zoom - (Font {termFontSize}px)
+                <ZoomOut size={14} /> {t('view_zoomout')} ({termFontSize}px)
               </div>
               <div style={{ height: '1px', backgroundColor: '#eee', margin: '4px 0' }} />
               <div style={splitMenuItemStyle} onClick={() => { setViewDropdownOpen(false); setTimeout(() => window.print(), 200); }}>
-                <Printer size={14} /> Print Screen
+                <Printer size={14} /> {t('view_print')}
               </div>
             </div>
           )}
         </div>
         <div style={{ position: 'relative' }} ref={splitDropdownRef}>
-          <RibbonBtn icon={<LayoutGrid size={22} color="#3498db" />} label="Split" onClick={() => { setSplitDropdownOpen(!splitDropdownOpen); setViewDropdownOpen(false); setSettingsDropdownOpen(false); }} />
+          <RibbonBtn icon={<LayoutGrid size={22} color="#3498db" />} label={t('ribbon_split')} onClick={() => { setSplitDropdownOpen(!splitDropdownOpen); setViewDropdownOpen(false); setSettingsDropdownOpen(false); setLangDropdownOpen(false); }} />
           {splitDropdownOpen && (
             <div style={{ position: 'absolute', top: '100%', left: 0, backgroundColor: '#fff', border: '1px solid #ccc', boxShadow: '0 4px 12px rgba(0,0,0,0.2)', zIndex: 1000, display: 'flex', flexDirection: 'column', minWidth: '220px' }}>
-              <div style={splitMenuItemStyle} onClick={() => { setSplitMode('single'); setSplitDropdownOpen(false); }}>Single terminal mode</div>
-              <div style={splitMenuItemStyle} onClick={() => { setSplitMode('vertical'); setSplitDropdownOpen(false); }}>2 terminals mode (vertical split)</div>
-              <div style={splitMenuItemStyle} onClick={() => { setSplitMode('horizontal'); setSplitDropdownOpen(false); }}>2 terminals mode (horizontal split)</div>
-              <div style={splitMenuItemStyle} onClick={() => { setSplitMode('grid'); setSplitDropdownOpen(false); }}>4 terminals mode</div>
+              <div style={splitMenuItemStyle} onClick={() => { setSplitMode('single'); setSplitDropdownOpen(false); }}>{t('split_single')}</div>
+              <div style={splitMenuItemStyle} onClick={() => { setSplitMode('vertical'); setSplitDropdownOpen(false); }}>{t('split_vertical')}</div>
+              <div style={splitMenuItemStyle} onClick={() => { setSplitMode('horizontal'); setSplitDropdownOpen(false); }}>{t('split_horizontal')}</div>
+              <div style={splitMenuItemStyle} onClick={() => { setSplitMode('grid'); setSplitDropdownOpen(false); }}>{t('split_grid')}</div>
             </div>
           )}
         </div>
         <RibbonBtn 
           icon={<Share2 size={22} color={isMultiExec ? "#e74c3c" : "#9b59b6"} />} 
-          label="MultiExec" 
+          label={t('ribbon_multiexec')} 
           onClick={toggleMultiExec} 
         />
         {/* Settings dropdown */}
         <div style={{ position: 'relative' }} ref={settingsDropdownRef}>
-          <RibbonBtn icon={<Settings size={22} color="#95a5a6" />} label="Settings" onClick={() => { setSettingsDropdownOpen(!settingsDropdownOpen); setViewDropdownOpen(false); setSplitDropdownOpen(false); }} />
+          <RibbonBtn icon={<Settings size={22} color="#95a5a6" />} label={t('ribbon_settings')} onClick={() => { setSettingsDropdownOpen(!settingsDropdownOpen); setViewDropdownOpen(false); setSplitDropdownOpen(false); setLangDropdownOpen(false); }} />
           {settingsDropdownOpen && (
             <div style={{ position: 'absolute', top: '100%', left: 0, backgroundColor: '#fff', border: '1px solid #ccc', boxShadow: '0 4px 12px rgba(0,0,0,0.2)', zIndex: 1000, display: 'flex', flexDirection: 'column', minWidth: '240px' }}>
-              <div style={splitMenuItemStyle} onClick={() => { const t = theme === 'dark' ? 'light' : 'dark'; setTheme(t); localStorage.setItem('moba_theme', t); setSettingsDropdownOpen(false); }}>
-                {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />} Theme: {theme === 'dark' ? 'Dark' : 'Light'} (toggle)
+              <div style={splitMenuItemStyle} onClick={() => { const th = theme === 'dark' ? 'light' : 'dark'; setTheme(th); localStorage.setItem('moba_theme', th); setSettingsDropdownOpen(false); }}>
+                {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />} {t('settings_theme')}: {theme === 'dark' ? t('settings_theme_dark') : t('settings_theme_light')} {t('settings_theme_toggle')}
               </div>
               <div style={{ height: '1px', backgroundColor: '#eee', margin: '4px 0' }} />
               <div style={splitMenuItemStyle} onClick={() => { promptMasterPassword(hasVault ? 'unlock' : 'setup'); setSettingsDropdownOpen(false); }}>
-                <Lock size={14} /> {hasVault ? 'Unlock Password Vault' : 'Setup Password Vault'}
+                <Lock size={14} /> {hasVault ? t('settings_vault_unlock') : t('settings_vault_setup')}
               </div>
               {hasVault && masterPassword && (
-                <div style={splitMenuItemStyle} onClick={() => { setMasterPassword(null); setSettingsDropdownOpen(false); alert('Vault locked for this session.'); }}>
-                  <Lock size={14} /> Lock Vault (Active)
+                <div style={splitMenuItemStyle} onClick={() => { setMasterPassword(null); setSettingsDropdownOpen(false); }}>
+                  <Lock size={14} /> {t('settings_vault_lock')}
                 </div>
               )}
               <div style={splitMenuItemStyle} onClick={() => { setSidebarTab('users'); setSettingsDropdownOpen(false); }}>
-                <Users size={14} /> System User Manager
+                <Users size={14} /> {t('settings_users')}
               </div>
               <div style={{ height: '1px', backgroundColor: '#eee', margin: '4px 0' }} />
               <div style={splitMenuItemStyle} onClick={() => { setShowDefaultPassModal(true); setDefaultUserInput(defaultUsername); setDefaultPassInput(defaultPassword); setDefaultCredsEnabledInput(defaultCredsEnabled); setSettingsDropdownOpen(false); }}>
-                <Key size={14} /> Default Credentials {defaultCredsEnabled ? '(Active)' : '(Disabled)'}
+                <Key size={14} /> {t('settings_creds')} {defaultCredsEnabled ? t('settings_creds_active') : t('settings_creds_disabled')}
               </div>
               <div style={{ height: '1px', backgroundColor: '#eee', margin: '4px 0' }} />
               <div style={splitMenuItemStyle} onClick={() => { const data = JSON.stringify({ tabs: tabs.map(t => ({ session: t.session, protocol: t.protocol, label: t.label })), settings: { theme, termFontSize, defaultPassword } }); const blob = new Blob([data], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'xterm-web-config.json'; a.click(); setSettingsDropdownOpen(false); }}>
-                <Download size={14} /> Export Configuration
+                <Download size={14} /> {t('settings_export')}
               </div>
-              <div style={splitMenuItemStyle} onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = '.json'; input.onchange = (e: any) => { const file = e.target.files[0]; if (file) { const reader = new FileReader(); reader.onload = (ev) => { try { const cfg = JSON.parse(ev.target?.result as string); if (cfg.settings) { if (cfg.settings.theme) { setTheme(cfg.settings.theme); localStorage.setItem('moba_theme', cfg.settings.theme); } if (cfg.settings.termFontSize) { setTermFontSize(cfg.settings.termFontSize); localStorage.setItem('moba_font_size', String(cfg.settings.termFontSize)); } if (cfg.settings.defaultPassword) { setDefaultPassword(cfg.settings.defaultPassword); localStorage.setItem('moba_default_password', cfg.settings.defaultPassword); } } alert('Configuration imported successfully!'); } catch { alert('Invalid config file'); } }; reader.readAsText(file); } }; input.click(); setSettingsDropdownOpen(false); }}>
-                <Upload size={14} /> Import Configuration
+              <div style={splitMenuItemStyle} onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = '.json'; input.onchange = (e: any) => { const file = e.target.files[0]; if (file) { const reader = new FileReader(); reader.onload = (ev) => { try { const cfg = JSON.parse(ev.target?.result as string); if (cfg.settings) { if (cfg.settings.theme) { setTheme(cfg.settings.theme); localStorage.setItem('moba_theme', cfg.settings.theme); } if (cfg.settings.termFontSize) { setTermFontSize(cfg.settings.termFontSize); localStorage.setItem('moba_font_size', String(cfg.settings.termFontSize)); } if (cfg.settings.defaultPassword) { setDefaultPassword(cfg.settings.defaultPassword); localStorage.setItem('moba_default_password', cfg.settings.defaultPassword); } } } catch {} }; reader.readAsText(file); } }; input.click(); setSettingsDropdownOpen(false); }}>
+                <Upload size={14} /> {t('settings_import')}
               </div>
             </div>
           )}
         </div>
         
         <div style={{ flex: 1 }}></div>
-        <RibbonBtn icon={<HelpCircle size={22} color="#3498db" />} label="Help" onClick={() => setHelpDialogOpen(true)} />
-        <RibbonBtn icon={<Power size={22} color="#e74c3c" />} label="Exit Session" onClick={() => {
+        <RibbonBtn icon={<HelpCircle size={22} color="#3498db" />} label={t('ribbon_help')} onClick={() => setHelpDialogOpen(true)} />
+        <RibbonBtn icon={<Power size={22} color="#e74c3c" />} label={t('ribbon_exit')} onClick={() => {
           tabs.forEach(t => closeTab(t.id));
         }} />
-        
+
+        {/* Language selector */}
+        <div style={{ width: '1px', height: '36px', backgroundColor: '#d3d3d3', margin: '0 4px' }} />
+        <div style={{ position: 'relative' }} ref={langDropdownRef}>
+          <button
+            onClick={() => { setLangDropdownOpen(!langDropdownOpen); setSettingsDropdownOpen(false); setViewDropdownOpen(false); setSplitDropdownOpen(false); }}
+            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', border: '1px solid #d3d3d3', borderRadius: 4, background: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
+            title={t('settings_language')}
+          >
+            <span style={{ fontSize: 16 }}>{LANGUAGES.find(l => l.code === lang)?.flag}</span>
+            <span style={{ color: '#555' }}>{LANGUAGES.find(l => l.code === lang)?.code.toUpperCase()}</span>
+          </button>
+          {langDropdownOpen && (
+            <div style={{ position: 'absolute', top: '100%', right: 0, backgroundColor: '#fff', border: '1px solid #ccc', boxShadow: '0 4px 12px rgba(0,0,0,0.2)', zIndex: 1100, display: 'flex', flexDirection: 'column', minWidth: '150px' }}>
+              {LANGUAGES.map(l => (
+                <div
+                  key={l.code}
+                  style={{ ...splitMenuItemStyle, fontWeight: lang === l.code ? 700 : 400, backgroundColor: lang === l.code ? '#e8f0fe' : 'transparent' }}
+                  onClick={() => { setLang(l.code); setLangDropdownOpen(false); }}
+                >
+                  <span style={{ fontSize: 16 }}>{l.flag}</span> {l.label}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         <div style={{ width: '1px', height: '36px', backgroundColor: '#d3d3d3', margin: '0 4px' }} />
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0 10px' }}>
            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-             <span style={{ fontSize: '11px', color: '#7f8c8d', fontWeight: '600', textTransform: 'uppercase' }}>User</span>
+             <span style={{ fontSize: '11px', color: '#7f8c8d', fontWeight: '600', textTransform: 'uppercase' }}>{t('user_label')}</span>
              <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#2c3e50' }}>{username}</span>
            </div>
            <button 
@@ -636,9 +670,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
                fontSize: '12px',
                boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
              }} 
-             title="Logout"
+             title={t('btn_logout')}
            >
-              <LogOut size={16} /> Logout
+              <LogOut size={16} /> {t('btn_logout')}
            </button>
         </div>
       </div>
