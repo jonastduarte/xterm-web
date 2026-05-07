@@ -548,6 +548,11 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
             </div>
           )}
         </div>
+        <RibbonBtn 
+          icon={<Share2 size={22} color={isMultiExec ? "#e74c3c" : "#9b59b6"} />} 
+          label="MultiExec" 
+          onClick={toggleMultiExec} 
+        />
         {/* Settings dropdown */}
         <div style={{ position: 'relative' }}>
           <RibbonBtn icon={<Settings size={22} color="#95a5a6" />} label="Settings" onClick={() => { setSettingsDropdownOpen(!settingsDropdownOpen); setViewDropdownOpen(false); setSplitDropdownOpen(false); }} />
@@ -582,15 +587,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
             </div>
           )}
         </div>
-        <RibbonBtn 
-          icon={<Share2 size={22} color={isMultiExec ? "#e74c3c" : "#9b59b6"} />} 
-          label="MultiExec" 
-          onClick={toggleMultiExec} 
-        />
         
         <div style={{ flex: 1 }}></div>
         <RibbonBtn icon={<HelpCircle size={22} color="#3498db" />} label="Help" onClick={() => setHelpDialogOpen(true)} />
-        <RibbonBtn icon={<Power size={22} color="#e74c3c" />} label="Exit" onClick={() => {
+        <RibbonBtn icon={<Power size={22} color="#e74c3c" />} label="Exit Session" onClick={() => {
           tabs.forEach(t => closeTab(t.id));
         }} />
         
@@ -654,12 +654,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
             onClick={() => setSidebarTab('sessions')} 
           />
 
-          <VerticalTab 
-            icon={<List size={16} />} 
-            label="Macros" 
-            isActive={sidebarTab === 'macros'} 
-            onClick={() => setSidebarTab('macros')} 
-          />
+
           <VerticalTab 
             icon={<HardDrive size={16} />} 
             label="Sftp" 
@@ -731,12 +726,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
              
 
              
-             {sidebarTab === 'macros' && (
-                <div style={{ padding: '12px', color: '#555', fontSize: '12px' }}>
-                  <b style={{ marginBottom: '8px', display: 'block', color: '#1a1a1a' }}>Saved Macros</b>
-                  <p style={{ fontStyle: 'italic', color: '#999' }}>No macros saved yet</p>
-                </div>
-             )}
+
 
              {sidebarTab === 'sftp' && (
                 <div style={{ padding: '12px', color: '#555', fontSize: '12px' }}>
