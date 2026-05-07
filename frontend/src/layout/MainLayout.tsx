@@ -558,8 +558,13 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
               </div>
               <div style={{ height: '1px', backgroundColor: '#eee', margin: '4px 0' }} />
               <div style={splitMenuItemStyle} onClick={() => { promptMasterPassword(hasVault ? 'unlock' : 'setup'); setSettingsDropdownOpen(false); }}>
-                <Lock size={14} /> Password Vault {hasVault ? '(Unlock)' : '(Setup)'}
+                <Lock size={14} /> {hasVault ? 'Unlock Password Vault' : 'Setup Password Vault'}
               </div>
+              {hasVault && masterPassword && (
+                <div style={splitMenuItemStyle} onClick={() => { setMasterPassword(null); setSettingsDropdownOpen(false); alert('Vault locked for this session.'); }}>
+                  <Lock size={14} /> Lock Vault (Active)
+                </div>
+              )}
               <div style={splitMenuItemStyle} onClick={() => { setSidebarTab('users'); setSettingsDropdownOpen(false); }}>
                 <Users size={14} /> System User Manager
               </div>
@@ -648,12 +653,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
             isActive={sidebarTab === 'sessions'} 
             onClick={() => setSidebarTab('sessions')} 
           />
-          <VerticalTab 
-            icon={<Wrench size={16} />} 
-            label="Tools" 
-            isActive={sidebarTab === 'tools'} 
-            onClick={() => setSidebarTab('tools')} 
-          />
+
           <VerticalTab 
             icon={<List size={16} />} 
             label="Macros" 
@@ -729,42 +729,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
                 />
              )}
              
-             {sidebarTab === 'tools' && (
-                <div style={{ padding: '12px', color: '#555', fontSize: '12px' }}>
-                  <b style={{ marginBottom: '8px', display: 'block', color: '#1a1a1a' }}>Network Tools</b>
-                  <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                    {['Network services', 'List open ports', 'Network scanner', 'Ports scanner', 'Packet capture'].map(tool => (
-                      <li key={tool} style={{ padding: '6px 8px', cursor: 'pointer', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '6px', color: '#1a1a1a' }}>
-                        <Server size={14} color="#7f8c8d" />
-                        <span>{tool}</span>
-                      </li>
-                    ))}
-                  </ul>
 
-                  <b style={{ marginTop: '20px', marginBottom: '8px', display: 'block', color: '#1a1a1a' }}>Security & Vault</b>
-                  <div style={{ padding: '10px', backgroundColor: '#f9f9f9', borderRadius: '6px', border: '1px solid #eee' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-                      <Lock size={16} color={hasVault ? '#27ae60' : '#7f8c8d'} />
-                      <span style={{ fontWeight: '500' }}>Password Vault: {hasVault ? 'Active' : 'Disabled'}</span>
-                    </div>
-                    {!hasVault ? (
-                      <button 
-                        onClick={() => promptMasterPassword('setup')}
-                        style={{ padding: '6px 12px', width: '100%', cursor: 'pointer', backgroundColor: '#005a9e', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '11px' }}
-                      >
-                        Enable Vault
-                      </button>
-                    ) : (
-                      <button 
-                        onClick={() => { setMasterPassword(null); alert('Vault locked for this session.'); }}
-                        style={{ padding: '6px 12px', width: '100%', cursor: 'pointer', backgroundColor: '#fff', color: '#333', border: '1px solid #ccc', borderRadius: '4px', fontSize: '11px' }}
-                      >
-                        Lock Vault
-                      </button>
-                    )}
-                  </div>
-                </div>
-             )}
              
              {sidebarTab === 'macros' && (
                 <div style={{ padding: '12px', color: '#555', fontSize: '12px' }}>
