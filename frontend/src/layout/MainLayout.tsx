@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import SFTPBrowser from '../components/SFTPBrowser';
 import FTPBrowser from '../components/FTPBrowser';
 import SessionTree from '../components/SessionTree';
@@ -102,6 +102,28 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
   const [defaultPassInput, setDefaultPassInput] = useState('');
   const [defaultUserInput, setDefaultUserInput] = useState('');
   const [defaultCredsEnabledInput, setDefaultCredsEnabledInput] = useState(false);
+
+  // Refs for click-outside-to-close
+  const viewDropdownRef = useRef<HTMLDivElement>(null);
+  const splitDropdownRef = useRef<HTMLDivElement>(null);
+  const settingsDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (viewDropdownOpen && viewDropdownRef.current && !viewDropdownRef.current.contains(event.target as Node)) {
+        setViewDropdownOpen(false);
+      }
+      if (splitDropdownOpen && splitDropdownRef.current && !splitDropdownRef.current.contains(event.target as Node)) {
+        setSplitDropdownOpen(false);
+      }
+      if (settingsDropdownOpen && settingsDropdownRef.current && !settingsDropdownRef.current.contains(event.target as Node)) {
+        setSettingsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [viewDropdownOpen, splitDropdownOpen, settingsDropdownOpen]);
 
   const activeTab = tabs.find(t => t.id === activeTabId) || null;
 
@@ -515,8 +537,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
         <RibbonBtn icon={<Monitor size={22} color="#16a085" />} label="Telnet" onClick={() => { setEditingSession({ protocol: 'telnet', port: 23 }); setSessionDialogMode('create'); setSessionDialogOpen(true); }} />
         <div style={{ width: '1px', height: '36px', backgroundColor: '#d3d3d3', margin: '0 2px' }} />
         <RibbonBtn icon={<FolderOpen size={22} color="#f1c40f" />} label="Sessions" onClick={() => setSidebarTab('sessions')} />
-        {/* View dropdown */}
-        <div style={{ position: 'relative' }}>
+        <div style={{ position: 'relative' }} ref={viewDropdownRef}>
           <RibbonBtn icon={<Eye size={22} color="#2ecc71" />} label="View" onClick={() => { setViewDropdownOpen(!viewDropdownOpen); setSettingsDropdownOpen(false); setSplitDropdownOpen(false); }} />
           {viewDropdownOpen && (
             <div style={{ position: 'absolute', top: '100%', left: 0, backgroundColor: '#fff', border: '1px solid #ccc', boxShadow: '0 4px 12px rgba(0,0,0,0.2)', zIndex: 1000, display: 'flex', flexDirection: 'column', minWidth: '220px' }}>
@@ -537,7 +558,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
             </div>
           )}
         </div>
-        <div style={{ position: 'relative' }}>
+        <div style={{ position: 'relative' }} ref={splitDropdownRef}>
           <RibbonBtn icon={<LayoutGrid size={22} color="#3498db" />} label="Split" onClick={() => { setSplitDropdownOpen(!splitDropdownOpen); setViewDropdownOpen(false); setSettingsDropdownOpen(false); }} />
           {splitDropdownOpen && (
             <div style={{ position: 'absolute', top: '100%', left: 0, backgroundColor: '#fff', border: '1px solid #ccc', boxShadow: '0 4px 12px rgba(0,0,0,0.2)', zIndex: 1000, display: 'flex', flexDirection: 'column', minWidth: '220px' }}>
@@ -554,7 +575,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
           onClick={toggleMultiExec} 
         />
         {/* Settings dropdown */}
-        <div style={{ position: 'relative' }}>
+        <div style={{ position: 'relative' }} ref={settingsDropdownRef}>
           <RibbonBtn icon={<Settings size={22} color="#95a5a6" />} label="Settings" onClick={() => { setSettingsDropdownOpen(!settingsDropdownOpen); setViewDropdownOpen(false); setSplitDropdownOpen(false); }} />
           {settingsDropdownOpen && (
             <div style={{ position: 'absolute', top: '100%', left: 0, backgroundColor: '#fff', border: '1px solid #ccc', boxShadow: '0 4px 12px rgba(0,0,0,0.2)', zIndex: 1000, display: 'flex', flexDirection: 'column', minWidth: '240px' }}>
