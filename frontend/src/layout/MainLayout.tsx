@@ -502,23 +502,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
       {isSessionDialogOpen && <SessionDialog onClose={() => setSessionDialogOpen(false)} onSave={handleSaveSession} initialData={editingSession} mode={sessionDialogMode} />}
       {isHelpDialogOpen && <HelpDialog onClose={() => setHelpDialogOpen(false)} />}
 
-      {/* Title Bar */}
-      <div style={{ backgroundColor: '#fff', padding: '2px 8px', borderBottom: '1px solid #ccc', fontSize: '12px', display: 'flex', gap: '12px', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <span style={menuItemStyle}>Terminal</span>
-          <span style={menuItemStyle}>Sessions</span>
-          <span style={menuItemStyle}>View</span>
-          <span style={menuItemStyle}>Tools</span>
-          <span style={menuItemStyle}>Settings</span>
-          <span style={menuItemStyle}>Help</span>
-        </div>
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-           <span style={{ fontWeight: 'bold', color: '#005a9e' }}>{username}</span>
-           <button onClick={onLogout} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '0 4px', display: 'flex', alignItems: 'center' }} title="Logout">
-              <LogOut size={14} color="#d9534f" />
-           </button>
-        </div>
-      </div>
+
 
       {/* Ribbon Toolbar */}
       <div style={{ backgroundColor: '#eef0f3', padding: '4px 8px', borderBottom: '1px solid #d3d3d3', display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -604,6 +588,34 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
         <RibbonBtn icon={<Power size={22} color="#e74c3c" />} label="Exit" onClick={() => {
           tabs.forEach(t => closeTab(t.id));
         }} />
+        
+        <div style={{ width: '1px', height: '36px', backgroundColor: '#d3d3d3', margin: '0 4px' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0 10px' }}>
+           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+             <span style={{ fontSize: '11px', color: '#7f8c8d', fontWeight: '600', textTransform: 'uppercase' }}>User</span>
+             <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#2c3e50' }}>{username}</span>
+           </div>
+           <button 
+             onClick={onLogout} 
+             style={{ 
+               backgroundColor: '#fff', 
+               border: '1px solid #dcdde1', 
+               borderRadius: '4px', 
+               padding: '6px 12px', 
+               cursor: 'pointer', 
+               display: 'flex', 
+               alignItems: 'center', 
+               gap: '8px',
+               color: '#e74c3c',
+               fontWeight: '600',
+               fontSize: '12px',
+               boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+             }} 
+             title="Logout"
+           >
+              <LogOut size={16} /> Logout
+           </button>
+        </div>
       </div>
       
       {/* MultiExec Notification Bar */}
