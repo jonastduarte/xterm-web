@@ -536,7 +536,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
         <RibbonBtn icon={<Globe size={22} color="#f39c12" />} label="FTP" onClick={() => { setEditingSession({ protocol: 'ftp', port: 21 }); setSessionDialogMode('create'); setSessionDialogOpen(true); }} />
         <RibbonBtn icon={<Monitor size={22} color="#16a085" />} label="Telnet" onClick={() => { setEditingSession({ protocol: 'telnet', port: 23 }); setSessionDialogMode('create'); setSessionDialogOpen(true); }} />
         <div style={{ width: '1px', height: '36px', backgroundColor: '#d3d3d3', margin: '0 2px' }} />
-        <RibbonBtn icon={<FolderOpen size={22} color="#f1c40f" />} label="Sessions" onClick={() => setSidebarTab('sessions')} />
         <div style={{ position: 'relative' }} ref={viewDropdownRef}>
           <RibbonBtn icon={<Eye size={22} color="#2ecc71" />} label="View" onClick={() => { setViewDropdownOpen(!viewDropdownOpen); setSettingsDropdownOpen(false); setSplitDropdownOpen(false); }} />
           {viewDropdownOpen && (
