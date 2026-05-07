@@ -51,45 +51,10 @@ export const T = {
 
   // ── Sidebar ─────────────────────────────────────────────────────
   sidebar_quick_connect: { en: 'Quick connect...',         pt: 'Conexão rápida...',          es: 'Conexión rápida...',        zh: '快速连接...' },
-  sidebar_sftp_title:    { en: 'Standalone SFTP/FTP',      pt: 'SFTP/FTP Standalone',        es: 'SFTP/FTP Independiente',    zh: '独立SFTP/FTP'},
-  sidebar_sftp_hint:     { en: 'Use the Session button or ribbon to create a dedicated SFTP or FTP connection.',
-                           pt: 'Use o botão Sessão ou a barra para criar uma conexão SFTP ou FTP.',
-                           es: 'Use el botón Sesión o la barra para crear una conexión SFTP o FTP.',
-                           zh: '请使用会话按钮或工具栏创建专用SFTP或FTP连接。' },
-  sidebar_sftp_new:      { en: 'New SFTP Session',         pt: 'Nova Sessão SFTP',           es: 'Nueva Sesión SFTP',         zh: '新建SFTP会话'},
-  sidebar_ftp_new:       { en: 'New FTP Session',          pt: 'Nova Sessão FTP',            es: 'Nueva Sesión FTP',          zh: '新建FTP会话' },
-  sidebar_logs_title:    { en: 'Session Logs',             pt: 'Logs de Sessão',             es: 'Registros de Sesión',       zh: '会话日志'   },
-  sidebar_users_title:   { en: 'Users',                    pt: 'Usuários',                   es: 'Usuarios',                  zh: '用户'       },
-
-  // ── Tab context menu ─────────────────────────────────────────────
-  tab_close:         { en: 'Close Tab',        pt: 'Fechar Aba',       es: 'Cerrar Pestaña',  zh: '关闭标签'  },
-  tab_close_all:     { en: 'Close All Tabs',   pt: 'Fechar Todas',     es: 'Cerrar Todo',     zh: '关闭全部'  },
-  tab_duplicate:     { en: 'Duplicate',         pt: 'Duplicar',        es: 'Duplicar',        zh: '复制'      },
-
-  // ── Vault modal ──────────────────────────────────────────────────
-  vault_title_setup:   { en: 'Setup Password Vault',  pt: 'Configurar Cofre',       es: 'Configurar Bóveda',   zh: '设置密码库'  },
-  vault_title_unlock:  { en: 'Unlock Password Vault', pt: 'Desbloquear Cofre',      es: 'Desbloquear Bóveda',  zh: '解锁密码库'  },
-  vault_desc_setup:    { en: 'Create a master password to encrypt your session credentials.',
-                         pt: 'Crie uma senha mestre para criptografar suas credenciais de sessão.',
-                         es: 'Cree una contraseña maestra para cifrar sus credenciales.',
-                         zh: '创建主密码以加密您的会话凭据。' },
-  vault_desc_unlock:   { en: 'Enter your master password to decrypt session credentials.',
-                         pt: 'Insira a senha mestre para descriptografar as credenciais.',
-                         es: 'Ingrese su contraseña maestra para descifrar las credenciales.',
-                         zh: '输入主密码以解密会话凭据。' },
-  vault_placeholder:   { en: 'Master Password...',    pt: 'Senha Mestre...',        es: 'Contraseña Maestra...', zh: '主密码...'  },
-  vault_cancel:        { en: 'Cancel',                pt: 'Cancelar',               es: 'Cancelar',             zh: '取消'       },
-  vault_btn_setup:     { en: 'Setup Vault',           pt: 'Configurar Cofre',       es: 'Configurar Bóveda',    zh: '设置密码库'  },
-  vault_btn_unlock:    { en: 'Unlock',                pt: 'Desbloquear',            es: 'Desbloquear',          zh: '解锁'       },
 
   // ── User display ─────────────────────────────────────────────────
   user_label:        { en: 'User',    pt: 'Usuário', es: 'Usuario', zh: '用户' },
   btn_logout:        { en: 'Logout',  pt: 'Sair',    es: 'Cerrar sesión', zh: '退出登录' },
-
-  // ── Empty pane ───────────────────────────────────────────────────
-  pane_empty:        { en: 'Empty Pane',       pt: 'Painel Vazio',   es: 'Panel Vacío',    zh: '空面板'    },
-  pane_closed:       { en: 'Connection closed',pt: 'Conexão fechada',es: 'Conexión cerrada',zh: '连接已关闭'},
-  pane_sftp_session: { en: 'SFTP Session',     pt: 'Sessão SFTP',    es: 'Sesión SFTP',    zh: 'SFTP会话'  },
 
   // ── Welcome screen ───────────────────────────────────────────────
   welcome_title:     { en: 'XTerm Web',                   pt: 'XTerm Web',                   es: 'XTerm Web',                   zh: 'XTerm Web'   },
@@ -122,7 +87,6 @@ export const T = {
   help_title:        { en: 'XTerm Web — Complete User Guide', pt: 'XTerm Web — Guia Completo do Usuário', es: 'XTerm Web — Guía Completa del Usuario', zh: 'XTerm Web — 完整用户指南' },
   help_close:        { en: 'Close',   pt: 'Fechar',  es: 'Cerrar',  zh: '关闭' },
   help_footer:       { en: 'XTerm Web — Internal documentation v2.0', pt: 'XTerm Web — Documentação interna v2.0', es: 'XTerm Web — Documentación interna v2.0', zh: 'XTerm Web — 内部文档 v2.0' },
-
   help_nav_start:     { en: 'Getting Started',    pt: 'Primeiros Passos',     es: 'Primeros Pasos',    zh: '快速入门'  },
   help_nav_sessions:  { en: 'Sessions',            pt: 'Sessões',              es: 'Sesiones',          zh: '会话管理'  },
   help_nav_split:     { en: 'Split & MultiExec',  pt: 'Split & MultiExec',   es: 'Split & MultiExec', zh: '分屏与批量'},
@@ -133,6 +97,54 @@ export const T = {
   help_nav_users:     { en: 'User Management',    pt: 'Gestão de Usuários',  es: 'Gestión de Usuarios',zh: '用户管理'  },
   help_nav_logs:      { en: 'Logs & Auditing',    pt: 'Logs & Auditoria',    es: 'Logs y Auditoría',  zh: '日志与审计'},
   help_nav_shortcuts: { en: 'Shortcuts & Tips',   pt: 'Atalhos & Dicas',     es: 'Atajos y Consejos', zh: '快捷键与技巧'},
+
+  // ── Login screen ─────────────────────────────────────────────────
+  login_subtitle:    { en: 'SSH • SFTP • FTP Client',    pt: 'Cliente SSH • SFTP • FTP',     es: 'Cliente SSH • SFTP • FTP',      zh: 'SSH • SFTP • FTP 客户端' },
+  login_username:    { en: 'Username',                   pt: 'Usuário',                       es: 'Usuario',                       zh: '用户名'     },
+  login_password:    { en: 'Password',                   pt: 'Senha',                         es: 'Contraseña',                    zh: '密码'       },
+  login_signin:      { en: 'Sign In',                    pt: 'Entrar',                        es: 'Iniciar Sesión',                 zh: '登录'       },
+  login_signing:     { en: 'Signing in...',              pt: 'Entrando...',                   es: 'Iniciando sesión...',            zh: '登录中...'  },
+  login_footer:      { en: 'XTerm Web v1.0 — Remote Connection Manager', pt: 'XTerm Web v1.0 — Gerenciador de Conexões Remotas', es: 'XTerm Web v1.0 — Gestor de Conexiones Remotas', zh: 'XTerm Web v1.0 — 远程连接管理器' },
+
+  // ── Session Dialog ───────────────────────────────────────────────
+  sd_new_session:    { en: 'New Session',      pt: 'Nova Sessão',      es: 'Nueva Sesión',      zh: '新建会话'  },
+  sd_edit_session:   { en: 'Edit Session',     pt: 'Editar Sessão',    es: 'Editar Sesión',     zh: '编辑会话'  },
+  sd_clone_session:  { en: 'Clone Session',    pt: 'Clonar Sessão',    es: 'Clonar Sesión',     zh: '克隆会话'  },
+  sd_session_name:   { en: 'Session name',     pt: 'Nome da sessão',   es: 'Nombre de sesión',  zh: '会话名称'  },
+  sd_optional:       { en: 'Optional',         pt: 'Opcional',         es: 'Opcional',          zh: '可选'      },
+  sd_folder:         { en: 'Folder',           pt: 'Pasta',            es: 'Carpeta',           zh: '文件夹'    },
+  sd_none:           { en: '(None)',            pt: '(Nenhuma)',        es: '(Ninguna)',          zh: '(无)'      },
+  sd_remote_host:    { en: 'Remote host',      pt: 'Host remoto',      es: 'Host remoto',       zh: '远程主机'  },
+  sd_username:       { en: 'Username',         pt: 'Usuário',          es: 'Usuario',           zh: '用户名'    },
+  sd_port:           { en: 'Port',             pt: 'Porta',            es: 'Puerto',            zh: '端口'      },
+  sd_password:       { en: 'Password',         pt: 'Senha',            es: 'Contraseña',        zh: '密码'      },
+  sd_authentication: { en: 'Authentication',  pt: 'Autenticação',     es: 'Autenticación',     zh: '认证方式'  },
+  sd_auth_password:  { en: 'Password',         pt: 'Senha',            es: 'Contraseña',        zh: '密码'      },
+  sd_auth_key:       { en: 'Private Key (RSA/ED25519)', pt: 'Chave Privada (RSA/ED25519)', es: 'Clave Privada (RSA/ED25519)', zh: '私钥 (RSA/ED25519)' },
+  sd_key_paste:      { en: 'Private Key (paste content)', pt: 'Chave Privada (cole o conteúdo)', es: 'Clave Privada (pegue el contenido)', zh: '私钥（粘贴内容）' },
+  sd_key_passphrase: { en: 'Key Passphrase (if any)',     pt: 'Frase-senha da chave (se houver)', es: 'Frase de contraseña (si aplica)', zh: '密钥密码（如有）' },
+  sd_key_empty:      { en: 'Leave empty if none',         pt: 'Deixe vazio se não houver',        es: 'Dejar vacío si no aplica',        zh: '无则留空'  },
+  sd_sftp_enable:    { en: 'Enable SFTP browser (file panel on connect)', pt: 'Ativar painel SFTP (painel de arquivos na conexão)', es: 'Habilitar panel SFTP (al conectar)', zh: '启用SFTP文件浏览器（连接时显示）' },
+  sd_enter_pass:     { en: 'Enter password...',       pt: 'Digite a senha...',       es: 'Ingrese contraseña...', zh: '请输入密码...' },
+  sd_cancel:         { en: 'Cancel',                  pt: 'Cancelar',                es: 'Cancelar',             zh: '取消'          },
+  sd_save_changes:   { en: 'Save Changes',            pt: 'Salvar Alterações',       es: 'Guardar Cambios',      zh: '保存更改'       },
+  sd_connect_save:   { en: 'Connect & Save',          pt: 'Conectar e Salvar',       es: 'Conectar y Guardar',   zh: '连接并保存'     },
+  sd_not_available:  { en: 'is not yet available in the Web Edition.', pt: 'ainda não está disponível na versão Web.', es: 'no está disponible aún en la edición Web.', zh: '在Web版中尚不可用。' },
+  sd_use_instead:    { en: 'Use SSH, SFTP, FTP, or Telnet for now.', pt: 'Use SSH, SFTP, FTP ou Telnet por enquanto.', es: 'Use SSH, SFTP, FTP o Telnet por ahora.', zh: '请暂时使用 SSH、SFTP、FTP 或 Telnet。' },
+  // Section titles in session dialog
+  sd_ssh_settings:   { en: 'Basic SSH settings',            pt: 'Configurações SSH básicas',      es: 'Configuración SSH básica',         zh: 'SSH基本设置'    },
+  sd_sftp_settings:  { en: 'SFTP Connection Settings',      pt: 'Configurações de conexão SFTP',  es: 'Configuración de conexión SFTP',   zh: 'SFTP连接设置'   },
+  sd_sftp_desc:      { en: 'Standalone SFTP file browser — connects without opening a terminal shell.', pt: 'Navegador SFTP autônomo — conecta sem abrir um terminal.', es: 'Navegador SFTP — se conecta sin abrir una terminal.', zh: '独立SFTP文件浏览器——无需打开终端即可连接。' },
+  sd_ftp_settings:   { en: 'FTP Connection Settings',       pt: 'Configurações de conexão FTP',   es: 'Configuración de conexión FTP',    zh: 'FTP连接设置'    },
+  sd_ftp_desc:       { en: 'Standard FTP file transfer — browse, upload, and download files.', pt: 'Transferência FTP padrão — navegue, envie e baixe arquivos.', es: 'Transferencia FTP estándar — navegue, suba y descargue archivos.', zh: '标准FTP文件传输——浏览、上传和下载文件。' },
+  sd_ftp_host:       { en: 'FTP Host',                      pt: 'Host FTP',                       es: 'Host FTP',                         zh: 'FTP主机'        },
+  sd_telnet_settings:{ en: 'Telnet Connection Settings',    pt: 'Configurações de conexão Telnet', es: 'Configuración de conexión Telnet', zh: 'Telnet连接设置'  },
+  sd_telnet_desc:    { en: 'Unencrypted terminal connection via Telnet protocol.', pt: 'Conexão de terminal não criptografada via protocolo Telnet.', es: 'Conexión de terminal sin cifrado vía protocolo Telnet.', zh: '通过Telnet协议的非加密终端连接。' },
+  sd_telnet_pass:    { en: 'Enter password (if required)...', pt: 'Digite a senha (se necessário)...', es: 'Ingrese contraseña (si se requiere)...', zh: '请输入密码（如需要）...' },
+  sd_serial_settings:{ en: 'Serial Connection Settings',   pt: 'Configurações de conexão Serial', es: 'Configuración de conexión Serial', zh: '串行连接设置'    },
+  sd_serial_desc:    { en: 'Connect to local serial ports using Web Serial API.', pt: 'Conecte-se a portas seriais locais usando a API Web Serial.', es: 'Conéctese a puertos seriales locales usando la API Web Serial.', zh: '使用Web Serial API连接本地串行端口。' },
+  sd_baud_rate:      { en: 'Baud Rate',                     pt: 'Taxa de Bauds',                  es: 'Tasa de Baudios',                  zh: '波特率'         },
+  sd_serial_hint:    { en: 'Serial port selection happens when you click Connect.', pt: 'A seleção da porta serial ocorre ao clicar em Conectar.', es: 'La selección del puerto serial ocurre al hacer clic en Conectar.', zh: '点击连接时将选择串行端口。' },
 } as const;
 
 export type TKey = keyof typeof T;

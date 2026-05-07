@@ -612,6 +612,21 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
               <div style={splitMenuItemStyle} onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = '.json'; input.onchange = (e: any) => { const file = e.target.files[0]; if (file) { const reader = new FileReader(); reader.onload = (ev) => { try { const cfg = JSON.parse(ev.target?.result as string); if (cfg.settings) { if (cfg.settings.theme) { setTheme(cfg.settings.theme); localStorage.setItem('moba_theme', cfg.settings.theme); } if (cfg.settings.termFontSize) { setTermFontSize(cfg.settings.termFontSize); localStorage.setItem('moba_font_size', String(cfg.settings.termFontSize)); } if (cfg.settings.defaultPassword) { setDefaultPassword(cfg.settings.defaultPassword); localStorage.setItem('moba_default_password', cfg.settings.defaultPassword); } } } catch {} }; reader.readAsText(file); } }; input.click(); setSettingsDropdownOpen(false); }}>
                 <Upload size={14} /> {t('settings_import')}
               </div>
+              <div style={{ height: '1px', backgroundColor: '#eee', margin: '4px 0' }} />
+              <div style={{ padding: '6px 14px' }}>
+                <div style={{ fontSize: '11px', color: '#999', marginBottom: 6, fontWeight: 600, textTransform: 'uppercase' }}>{t('settings_language')}</div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  {LANGUAGES.map(l => (
+                    <button
+                      key={l.code}
+                      onClick={() => { setLang(l.code); setSettingsDropdownOpen(false); }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 8px', border: `1px solid ${lang === l.code ? '#0078d4' : '#ddd'}`, borderRadius: 4, background: lang === l.code ? '#e8f0fe' : '#fff', cursor: 'pointer', fontSize: 12, fontWeight: lang === l.code ? 700 : 400, color: lang === l.code ? '#0078d4' : '#444' }}
+                    >
+                      <span style={{ fontSize: 14 }}>{l.flag}</span> {l.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -621,32 +636,6 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
         <RibbonBtn icon={<Power size={22} color="#e74c3c" />} label={t('ribbon_exit')} onClick={() => {
           tabs.forEach(t => closeTab(t.id));
         }} />
-
-        {/* Language selector */}
-        <div style={{ width: '1px', height: '36px', backgroundColor: '#d3d3d3', margin: '0 4px' }} />
-        <div style={{ position: 'relative' }} ref={langDropdownRef}>
-          <button
-            onClick={() => { setLangDropdownOpen(!langDropdownOpen); setSettingsDropdownOpen(false); setViewDropdownOpen(false); setSplitDropdownOpen(false); }}
-            style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 10px', border: '1px solid #d3d3d3', borderRadius: 4, background: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
-            title={t('settings_language')}
-          >
-            <span style={{ fontSize: 16 }}>{LANGUAGES.find(l => l.code === lang)?.flag}</span>
-            <span style={{ color: '#555' }}>{LANGUAGES.find(l => l.code === lang)?.code.toUpperCase()}</span>
-          </button>
-          {langDropdownOpen && (
-            <div style={{ position: 'absolute', top: '100%', right: 0, backgroundColor: '#fff', border: '1px solid #ccc', boxShadow: '0 4px 12px rgba(0,0,0,0.2)', zIndex: 1100, display: 'flex', flexDirection: 'column', minWidth: '150px' }}>
-              {LANGUAGES.map(l => (
-                <div
-                  key={l.code}
-                  style={{ ...splitMenuItemStyle, fontWeight: lang === l.code ? 700 : 400, backgroundColor: lang === l.code ? '#e8f0fe' : 'transparent' }}
-                  onClick={() => { setLang(l.code); setLangDropdownOpen(false); }}
-                >
-                  <span style={{ fontSize: 16 }}>{l.flag}</span> {l.label}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
 
         <div style={{ width: '1px', height: '36px', backgroundColor: '#d3d3d3', margin: '0 4px' }} />
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0 10px' }}>
