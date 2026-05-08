@@ -735,8 +735,20 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
           <div style={{ flex: 1 }} />
           <div 
             onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
-            style={{ padding: '12px 0', cursor: 'pointer', opacity: 0.6, width: '100%', display: 'flex', justifyContent: 'center' }}
+            style={{ 
+              padding: '12px 0', 
+              cursor: 'pointer', 
+              color: '#333',
+              width: '100%', 
+              display: 'flex', 
+              justifyContent: 'center',
+              backgroundColor: 'rgba(0,0,0,0.05)',
+              borderTop: '1px solid #d4d4d4',
+              transition: 'background-color 0.2s'
+            }}
             title={isSidebarOpen ? t('sb_collapse') : t('sb_expand')}
+            onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.1)'}
+            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.05)'}
           >
             {isSidebarOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
           </div>
