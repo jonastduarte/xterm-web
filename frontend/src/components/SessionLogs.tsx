@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Download, Trash2, FileText, X, Eye, Search } from 'lucide-react';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface SessionLogsProps {
   apiUrl: string;
 }
 
 const SessionLogs: React.FC<SessionLogsProps> = ({ apiUrl }) => {
+  const { t } = useLanguage();
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -33,7 +35,7 @@ const SessionLogs: React.FC<SessionLogsProps> = ({ apiUrl }) => {
       const data = await res.json();
       setViewingLog({ name: filename, content: data.content, isTruncated: data.isTruncated });
     } catch (err: any) {
-      alert(err.message);
+      alert(t('alert_err') + err.message);
     }
   };
 
@@ -57,7 +59,7 @@ const SessionLogs: React.FC<SessionLogsProps> = ({ apiUrl }) => {
         a.click();
         window.URL.revokeObjectURL(url);
       })
-      .catch(err => alert(err.message));
+      .catch(err => alert(t('alert_err') + err.message));
   };
 
   const formatSize = (bytes: number) => {
@@ -74,17 +76,17 @@ const SessionLogs: React.FC<SessionLogsProps> = ({ apiUrl }) => {
   return (
     <div style={{ padding: '12px', fontSize: '13px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-        <b style={{ color: '#1a1a1a' }}>Session Logs</b>
+        <b style={{ color: '#1a1a1a' }}>{t('sl_title')}</b>
       </div>
       
       <p style={{ fontSize: '11px', color: '#666', marginBottom: '12px', lineHeight: 1.4 }}>
-        Terminal sessions are automatically recorded here. Logs are kept for 30 days.
+        {t('sl_desc')}
       </p>
 
       <div style={{ marginBottom: '12px', position: 'relative' }}>
         <input 
           type="text" 
-          placeholder="Search logs by name or date..." 
+          placeholder={t('sl_search')} 
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
           style={{ width: '100%', padding: '6px 8px 6px 28px', border: '1px solid #ccc', borderRadius: '4px', boxSizing: 'border-box' }}
@@ -92,8 +94,8 @@ const SessionLogs: React.FC<SessionLogsProps> = ({ apiUrl }) => {
         <Search size={14} color="#888" style={{ position: 'absolute', left: '8px', top: '8px' }} />
       </div>
 
-      {loading ? <p>Loading...</p> : filteredLogs.length === 0 ? (
-        <p style={{ color: '#888', fontStyle: 'italic', textAlign: 'center', marginTop: '20px' }}>No logs found.</p>
+      {loading ? <p>{t('sl_loading')}</p> : filteredLogs.length === 0 ? (
+        <p style={{ color: '#888', fontStyle: 'italic', textAlign: 'center', marginTop: '20px' }}>{t('sl_no_logs')}</p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {filteredLogs.map(log => (
@@ -130,7 +132,7 @@ const SessionLogs: React.FC<SessionLogsProps> = ({ apiUrl }) => {
               </div>
               <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                 <button onClick={() => handleDownload(viewingLog.name)} style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid #3498db', background: 'transparent', color: '#3498db', padding: '4px 12px', borderRadius: '4px', cursor: 'pointer' }}>
-                  <Download size={14} /> Download File
+                  <Download size={14} /> {t('sl_download')}
                 </button>
                 <button onClick={() => setViewingLog(null)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
                   <X size={20} color="#7f8c8d" />
@@ -141,7 +143,7 @@ const SessionLogs: React.FC<SessionLogsProps> = ({ apiUrl }) => {
             {viewingLog.isTruncated && (
               <div style={{ padding: '10px 16px', backgroundColor: '#fff3cd', color: '#856404', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid #ffeeba' }}>
                 <span style={{ fontSize: '16px' }}>⚠️</span>
-                <span>This log file exceeds 1000 lines. The preview has been truncated for performance. Please download the file to view the complete log.</span>
+                <span>{t('sl_trunc_warn')}</span>
               </div>
             )}
             

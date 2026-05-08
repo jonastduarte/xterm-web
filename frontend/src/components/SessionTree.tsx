@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Monitor, Folder, ChevronRight, ChevronDown, PlusCircle, Edit2, Copy, Terminal, FileText, Globe, Trash2, Play, Download, Upload } from 'lucide-react';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface SessionTreeProps {
   apiUrl: string;
@@ -9,6 +10,7 @@ interface SessionTreeProps {
 }
 
 const SessionTree: React.FC<SessionTreeProps> = ({ apiUrl, onConnect, onEdit, onClone }) => {
+  const { t } = useLanguage();
   const [folders, setFolders] = useState<any[]>([]);
   const [sessions, setSessions] = useState<any[]>([]);
   const [expandedFolders, setExpandedFolders] = useState<{ [key: number]: boolean }>({});
@@ -84,7 +86,7 @@ const SessionTree: React.FC<SessionTreeProps> = ({ apiUrl, onConnect, onEdit, on
       setIsCreatingFolder(null);
       refreshData();
     })
-    .catch(err => alert('Error: ' + err.message));
+    .catch(err => alert(t('alert_err') + err.message));
   };
 
   // Close context menu on click outside
@@ -121,7 +123,7 @@ const SessionTree: React.FC<SessionTreeProps> = ({ apiUrl, onConnect, onEdit, on
         a.remove();
         window.URL.revokeObjectURL(url);
       })
-      .catch(err => alert('Error exporting: ' + err.message));
+      .catch(err => alert(t('alert_err_export') + err.message));
   };
 
   const handleImport = () => {
@@ -141,7 +143,7 @@ const SessionTree: React.FC<SessionTreeProps> = ({ apiUrl, onConnect, onEdit, on
             data = JSON.parse(reader.result as string);
           }
         } catch (err: any) { 
-          alert('Invalid file format: ' + err.message); 
+          alert(t('alert_inv_format') + err.message); 
           return; 
         }
 
@@ -152,7 +154,7 @@ const SessionTree: React.FC<SessionTreeProps> = ({ apiUrl, onConnect, onEdit, on
             body: JSON.stringify(data)
           }).then(() => {
             refreshData();
-            alert('Sessions imported successfully!');
+            alert(t('alert_imp_succ'));
           });
         }
       };
@@ -236,13 +238,13 @@ const SessionTree: React.FC<SessionTreeProps> = ({ apiUrl, onConnect, onEdit, on
 
   const deleteSession = (e: React.MouseEvent, id: number) => {
     e.stopPropagation();
-    if (!confirm('Delete session?')) return;
+    if (!confirm(t('alert_del_session'))) return;
     fetch(`${apiUrl}/api/sessions/${id}`, { method: 'DELETE' }).then(() => refreshData());
   };
 
   const deleteFolder = (e: React.MouseEvent, id: number) => {
     e.stopPropagation();
-    if (!confirm('Delete folder? (Sessions will be moved to root)')) return;
+    if (!confirm(t('alert_del_folder'))) return;
     fetch(`${apiUrl}/api/folders/${id}`, { method: 'DELETE' }).then(() => refreshData());
   };
 
@@ -343,7 +345,7 @@ const SessionTree: React.FC<SessionTreeProps> = ({ apiUrl, onConnect, onEdit, on
           <ul style={{ listStyle: 'none', paddingLeft: '0', margin: '2px 0' }}>
             {subfolders.map(sf => renderFolder(sf, level + 1))}
             {folderSessions.map(s => renderSessionItem(s, level + 1))}
-            {folderSessions.length === 0 && subfolders.length === 0 && <li style={{ color: '#bbb', fontStyle: 'italic', fontSize: '10px', padding: `4px ${8 + (level + 1) * 10}px` }}>Empty folder</li>}
+            {folderSessions.length === 0 && subfolders.length === 0 && <li style={{ color: '#bbb', fontStyle: 'italic', fontSize: '10px', padding: `4px ${8 + (level + 1) * 10}px` }}>{t('st_empty_folder')}</li>}
           </ul>
         )}
       </li>
@@ -354,9 +356,9 @@ const SessionTree: React.FC<SessionTreeProps> = ({ apiUrl, onConnect, onEdit, on
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', fontSize: '12px' }}>
       
       <div style={{ padding: '6px 8px', borderBottom: '1px solid #e0e0e0', display: 'flex', gap: '4px', backgroundColor: '#fafafa' }}>
-         <button onClick={() => setIsCreatingFolder('root')} style={btnStyle} title="New Folder"><PlusCircle size={13}/> Folder</button>
-         <button onClick={handleExport} style={btnStyle} title="Export Sessions"><Download size={13}/> Export</button>
-         <button onClick={handleImport} style={btnStyle} title="Import Sessions"><Upload size={13}/> Import</button>
+         <button onClick={() => setIsCreatingFolder('root')} style={btnStyle} title={t('st_folder')}><PlusCircle size={13}/> {t('st_folder')}</button>
+         <button onClick={handleExport} style={btnStyle} title={t('st_export')}><Download size={13}/> {t('st_export')}</button>
+         <button onClick={handleImport} style={btnStyle} title={t('st_import')}><Upload size={13}/> {t('st_import')}</button>
       </div>
 
       {isCreatingFolder && (
@@ -366,20 +368,20 @@ const SessionTree: React.FC<SessionTreeProps> = ({ apiUrl, onConnect, onEdit, on
             type="text" 
             value={newFolderName} 
             onChange={e => setNewFolderName(e.target.value)}
-            placeholder="Folder name..."
+            placeholder={t('st_folder_name')}
             style={{ flex: 1, padding: '4px', fontSize: '11px', border: '1px solid #ccc', borderRadius: '3px' }}
             onKeyDown={e => {
               if (e.key === 'Enter') submitCreateFolder();
               if (e.key === 'Escape') setIsCreatingFolder(null);
             }}
           />
-          <button onClick={submitCreateFolder} style={{...btnStyle, backgroundColor: '#005a9e', color: 'white'}}>Add</button>
-          <button onClick={() => setIsCreatingFolder(null)} style={btnStyle}>Cancel</button>
+          <button onClick={submitCreateFolder} style={{...btnStyle, backgroundColor: '#005a9e', color: 'white'}}>{t('st_add')}</button>
+          <button onClick={() => setIsCreatingFolder(null)} style={btnStyle}>{t('st_cancel')}</button>
         </div>
       )}
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '6px' }}>
-        <b style={{ marginBottom: '6px', display: 'block', color: '#1a1a1a', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>USER SESSIONS</b>
+        <b style={{ marginBottom: '6px', display: 'block', color: '#1a1a1a', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{t('st_user_sessions')}</b>
         
         {/* Root Drop Zone */}
         <div 
@@ -396,8 +398,8 @@ const SessionTree: React.FC<SessionTreeProps> = ({ apiUrl, onConnect, onEdit, on
           {sessions.length === 0 && folders.length === 0 && (
             <div style={{ textAlign: 'center', padding: '20px 8px', color: '#bbb', fontSize: '11px' }}>
               <Monitor size={24} style={{ opacity: 0.3, marginBottom: '8px' }} />
-              <p>No sessions yet</p>
-              <p style={{ fontSize: '10px' }}>Use the Session button to create one</p>
+              <p>{t('st_no_sessions')}</p>
+              <p style={{ fontSize: '10px' }}>{t('st_use_session_btn')}</p>
             </div>
           )}
         </div>
@@ -412,31 +414,31 @@ const SessionTree: React.FC<SessionTreeProps> = ({ apiUrl, onConnect, onEdit, on
           {contextMenu.type === 'session' && (
             <>
               <div onClick={() => { onConnect(contextMenu.item); setContextMenu(null); }} style={ctxItemStyle} onMouseEnter={ctxHover} onMouseLeave={ctxLeave}>
-                <Play size={13} color="#27ae60" /> <span>Connect</span>
+                <Play size={13} color="#27ae60" /> <span>{t('st_connect')}</span>
               </div>
               <div onClick={() => { onEdit(contextMenu.item); setContextMenu(null); }} style={ctxItemStyle} onMouseEnter={ctxHover} onMouseLeave={ctxLeave}>
-                <Edit2 size={13} /> <span>Edit</span>
+                <Edit2 size={13} /> <span>{t('st_edit')}</span>
               </div>
               <div onClick={() => { onClone(contextMenu.item); setContextMenu(null); }} style={ctxItemStyle} onMouseEnter={ctxHover} onMouseLeave={ctxLeave}>
-                <Copy size={13} /> <span>Clone</span>
+                <Copy size={13} /> <span>{t('st_clone')}</span>
               </div>
               <div style={{ height: '1px', backgroundColor: '#eee', margin: '4px 0' }} />
-              <div onClick={() => { if (confirm('Delete session?')) { fetch(`${apiUrl}/api/sessions/${contextMenu.item.id}`, { method: 'DELETE' }).then(() => refreshData()); } setContextMenu(null); }} style={{ ...ctxItemStyle, color: '#cc0000' }} onMouseEnter={ctxHover} onMouseLeave={ctxLeave}>
-                <Trash2 size={13} color="#cc0000" /> <span>Delete</span>
+              <div onClick={() => { if (confirm(t('alert_del_session'))) { fetch(`${apiUrl}/api/sessions/${contextMenu.item.id}`, { method: 'DELETE' }).then(() => refreshData()); } setContextMenu(null); }} style={{ ...ctxItemStyle, color: '#cc0000' }} onMouseEnter={ctxHover} onMouseLeave={ctxLeave}>
+                <Trash2 size={13} color="#cc0000" /> <span>{t('st_delete')}</span>
               </div>
             </>
           )}
           {contextMenu.type === 'folder' && (
             <>
               <div onClick={() => { openAllInFolder(contextMenu.item.id); setContextMenu(null); }} style={ctxItemStyle} onMouseEnter={ctxHover} onMouseLeave={ctxLeave}>
-                <Play size={13} color="#27ae60" /> <span>Open all sessions</span>
+                <Play size={13} color="#27ae60" /> <span>{t('st_open_all')}</span>
               </div>
               <div onClick={() => { setIsCreatingFolder(contextMenu.item.id); setContextMenu(null); }} style={ctxItemStyle} onMouseEnter={ctxHover} onMouseLeave={ctxLeave}>
-                <PlusCircle size={13} /> <span>Create subfolder</span>
+                <PlusCircle size={13} /> <span>{t('st_create_sub')}</span>
               </div>
               <div style={{ height: '1px', backgroundColor: '#eee', margin: '4px 0' }} />
-              <div onClick={() => { if (confirm('Delete folder?')) { fetch(`${apiUrl}/api/folders/${contextMenu.item.id}`, { method: 'DELETE' }).then(() => refreshData()); } setContextMenu(null); }} style={{ ...ctxItemStyle, color: '#cc0000' }} onMouseEnter={ctxHover} onMouseLeave={ctxLeave}>
-                <Trash2 size={13} color="#cc0000" /> <span>Delete folder</span>
+              <div onClick={() => { if (confirm(t('alert_del_folder2'))) { fetch(`${apiUrl}/api/folders/${contextMenu.item.id}`, { method: 'DELETE' }).then(() => refreshData()); } setContextMenu(null); }} style={{ ...ctxItemStyle, color: '#cc0000' }} onMouseEnter={ctxHover} onMouseLeave={ctxLeave}>
+                <Trash2 size={13} color="#cc0000" /> <span>{t('st_delete_folder')}</span>
               </div>
             </>
           )}

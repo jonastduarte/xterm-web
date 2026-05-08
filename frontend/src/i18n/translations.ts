@@ -145,6 +145,70 @@ export const T = {
   sd_serial_desc:    { en: 'Connect to local serial ports using Web Serial API.', pt: 'Conecte-se a portas seriais locais usando a API Web Serial.', es: 'Conéctese a puertos seriales locales usando la API Web Serial.', zh: '使用Web Serial API连接本地串行端口。' },
   sd_baud_rate:      { en: 'Baud Rate',                     pt: 'Taxa de Bauds',                  es: 'Tasa de Baudios',                  zh: '波特率'         },
   sd_serial_hint:    { en: 'Serial port selection happens when you click Connect.', pt: 'A seleção da porta serial ocorre ao clicar em Conectar.', es: 'La selección del puerto serial ocurre al hacer clic en Conectar.', zh: '点击连接时将选择串行端口。' },
+
+  // ── SessionTree Sidebar ──────────────────────────────────────────
+  st_folder:         { en: 'Folder', pt: 'Pasta', es: 'Carpeta', zh: '文件夹' },
+  st_export:         { en: 'Export', pt: 'Exportar', es: 'Exportar', zh: '导出' },
+  st_import:         { en: 'Import', pt: 'Importar', es: 'Importar', zh: '导入' },
+  st_folder_name:    { en: 'Folder name...', pt: 'Nome da pasta...', es: 'Nombre de la carpeta...', zh: '文件夹名称...' },
+  st_add:            { en: 'Add', pt: 'Adicionar', es: 'Añadir', zh: '添加' },
+  st_cancel:         { en: 'Cancel', pt: 'Cancelar', es: 'Cancelar', zh: '取消' },
+  st_user_sessions:  { en: 'USER SESSIONS', pt: 'SESSÕES DO USUÁRIO', es: 'SESIONES DE USUARIO', zh: '用户会话' },
+  st_empty_folder:   { en: 'Empty folder', pt: 'Pasta vazia', es: 'Carpeta vacía', zh: '空文件夹' },
+  st_no_sessions:    { en: 'No sessions yet', pt: 'Nenhuma sessão ainda', es: 'Aún no hay sesiones', zh: '暂无会话' },
+  st_use_session_btn:{ en: 'Use the Session button to create one', pt: 'Use o botão Sessão para criar uma', es: 'Use el botón Sesión para crear una', zh: '使用“会话”按钮创建一个' },
+  st_connect:        { en: 'Connect', pt: 'Conectar', es: 'Conectar', zh: '连接' },
+  st_edit:           { en: 'Edit', pt: 'Editar', es: 'Editar', zh: '编辑' },
+  st_clone:          { en: 'Clone', pt: 'Clonar', es: 'Clonar', zh: '克隆' },
+  st_delete:         { en: 'Delete', pt: 'Excluir', es: 'Eliminar', zh: '删除' },
+  st_open_all:       { en: 'Open all sessions', pt: 'Abrir todas as sessões', es: 'Abrir todas las sesiones', zh: '打开所有会话' },
+  st_create_sub:     { en: 'Create subfolder', pt: 'Criar subpasta', es: 'Crear subcarpeta', zh: '创建子文件夹' },
+  st_delete_folder:  { en: 'Delete folder', pt: 'Excluir pasta', es: 'Eliminar carpeta', zh: '删除文件夹' },
+
+  // ── SessionLogs Sidebar ──────────────────────────────────────────
+  sl_title:          { en: 'Session Logs', pt: 'Logs da Sessão', es: 'Registros de Sesión', zh: '会话日志' },
+  sl_desc:           { en: 'Terminal sessions are automatically recorded here. Logs are kept for 30 days.', pt: 'Sessões de terminal são gravadas automaticamente aqui. Logs são mantidos por 30 dias.', es: 'Las sesiones de terminal se registran automáticamente aquí. Los registros se guardan por 30 días.', zh: '终端会话将自动记录在此。日志保留30天。' },
+  sl_search:         { en: 'Search logs by name or date...', pt: 'Pesquisar logs por nome ou data...', es: 'Buscar registros por nombre o fecha...', zh: '按名称或日期搜索日志...' },
+  sl_loading:        { en: 'Loading...', pt: 'Carregando...', es: 'Cargando...', zh: '加载中...' },
+  sl_no_logs:        { en: 'No logs found.', pt: 'Nenhum log encontrado.', es: 'No se encontraron registros.', zh: '未找到日志。' },
+  sl_download:       { en: 'Download File', pt: 'Baixar Arquivo', es: 'Descargar Archivo', zh: '下载文件' },
+  sl_trunc_warn:     { en: 'This log file exceeds 1000 lines. The preview has been truncated for performance. Please download the file to view the complete log.', pt: 'Este arquivo de log excede 1000 linhas. A visualização foi truncada para desempenho. Baixe o arquivo para ver o log completo.', es: 'Este archivo de registro excede las 1000 líneas. La vista previa se ha truncado por rendimiento. Descargue el archivo para ver el registro completo.', zh: '此日志文件超过1000行。为了性能，预览已被截断。请下载文件以查看完整日志。' },
+
+  // ── UserManagement Sidebar ───────────────────────────────────────
+  um_title:          { en: 'Users', pt: 'Usuários', es: 'Usuarios', zh: '用户' },
+  um_new_user:       { en: 'New User', pt: 'Novo Usuário', es: 'Nuevo Usuario', zh: '新建用户' },
+  um_role:           { en: 'Role', pt: 'Função', es: 'Rol', zh: '角色' },
+  um_edit_user:      { en: 'Edit User', pt: 'Editar Usuário', es: 'Editar Usuario', zh: '编辑用户' },
+  um_change_pass:    { en: 'Change Password', pt: 'Mudar Senha', es: 'Cambiar Contraseña', zh: '修改密码' },
+  um_username:       { en: 'Username', pt: 'Nome de Usuário', es: 'Nombre de Usuario', zh: '用户名' },
+  um_password:       { en: 'Password', pt: 'Senha', es: 'Contraseña', zh: '密码' },
+  um_new_pass:       { en: 'New Password', pt: 'Nova Senha', es: 'Nueva Contraseña', zh: '新密码' },
+  um_role_user:      { en: 'User', pt: 'Usuário', es: 'Usuario', zh: '用户' },
+  um_role_admin:     { en: 'Admin', pt: 'Administrador', es: 'Administrador', zh: '管理员' },
+  um_save:           { en: 'Save', pt: 'Salvar', es: 'Guardar', zh: '保存' },
+
+  // ── Alerts & Confirms ────────────────────────────────────────────
+  alert_multiexec:   { en: 'MultiExec requires at least 2 active terminal sessions. Open more sessions first.', pt: 'O MultiExec requer pelo menos 2 sessões de terminal ativas. Abra mais sessões primeiro.', es: 'MultiExec requiere al menos 2 sesiones de terminal activas. Abra más sesiones primero.', zh: '批量执行至少需要2个活动的终端会话。请先打开更多会话。' },
+  alert_del_session: { en: 'Delete session?', pt: 'Excluir sessão?', es: '¿Eliminar sesión?', zh: '删除会话？' },
+  alert_del_folder:  { en: 'Delete folder? (Sessions will be moved to root)', pt: 'Excluir pasta? (As sessões serão movidas para a raiz)', es: '¿Eliminar carpeta? (Las sesiones se moverán a la raíz)', zh: '删除文件夹？(会话将被移动到根目录)' },
+  alert_del_folder2: { en: 'Delete folder?', pt: 'Excluir pasta?', es: '¿Eliminar carpeta?', zh: '删除文件夹？' },
+  alert_err:         { en: 'Error: ', pt: 'Erro: ', es: 'Error: ', zh: '错误：' },
+  alert_err_export:  { en: 'Error exporting: ', pt: 'Erro ao exportar: ', es: 'Error al exportar: ', zh: '导出错误：' },
+  alert_inv_format:  { en: 'Invalid file format: ', pt: 'Formato de arquivo inválido: ', es: 'Formato de archivo inválido: ', zh: '无效的文件格式：' },
+  alert_imp_succ:    { en: 'Sessions imported successfully!', pt: 'Sessões importadas com sucesso!', es: '¡Sesiones importadas con éxito!', zh: '会话导入成功！' },
+  alert_pass_succ:   { en: 'Password changed successfully. You may need to log in again.', pt: 'Senha alterada com sucesso. Talvez seja necessário fazer login novamente.', es: 'Contraseña cambiada exitosamente. Es posible que deba iniciar sesión nuevamente.', zh: '密码修改成功。您可能需要重新登录。' },
+  alert_del_user:    { en: 'Are you sure you want to delete this user? This will delete all their sessions too!', pt: 'Tem certeza de que deseja excluir este usuário? Isso excluirá todas as sessões dele também!', es: '¿Estás seguro de que deseas eliminar a este usuario? ¡Esto también eliminará todas sus sesiones!', zh: '您确定要删除此用户吗？这也会删除其所有会话！' },
+  alert_fail_del:    { en: 'Failed to delete: ', pt: 'Falha ao excluir: ', es: 'Fallo al eliminar: ', zh: '删除失败：' },
+
+  // ── MainLayout extra ─────────────────────────────────────────────
+  sb_sessions:       { en: 'Sessions', pt: 'Sessões', es: 'Sesiones', zh: '会话' },
+  sb_sftp:           { en: 'SFTP', pt: 'SFTP', es: 'SFTP', zh: 'SFTP' },
+  sb_logs:           { en: 'Logs', pt: 'Logs', es: 'Logs', zh: '日志' },
+  sb_users:          { en: 'Users', pt: 'Usuários', es: 'Usuarios', zh: '用户' },
+  sb_standalone:     { en: 'Standalone SFTP/FTP', pt: 'SFTP/FTP Independente', es: 'SFTP/FTP Independiente', zh: '独立 SFTP/FTP' },
+  sb_standalone_desc:{ en: 'Use the Session button or ribbon to create a dedicated SFTP or FTP connection.', pt: 'Use o botão Sessão ou o menu superior para criar uma conexão SFTP/FTP dedicada.', es: 'Use el botón Sesión o el menú superior para crear una conexión SFTP o FTP dedicada.', zh: '使用会话按钮或顶部菜单创建专用的SFTP或FTP连接。' },
+  sb_new_sftp:       { en: 'New SFTP Session', pt: 'Nova Sessão SFTP', es: 'Nueva Sesión SFTP', zh: '新建 SFTP 会话' },
+  sb_new_ftp:        { en: 'New FTP Session', pt: 'Nova Sessão FTP', es: 'Nueva Sesión FTP', zh: '新建 FTP 会话' },
 } as const;
 
 export type TKey = keyof typeof T;

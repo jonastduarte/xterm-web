@@ -467,7 +467,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
       // Activating MultiExec
       const terminalTabs = tabs.filter(t => t.protocol !== 'ftp' && t.protocol !== 'sftp' && t.ws);
       if (terminalTabs.length < 2) {
-        alert('MultiExec requires at least 2 active terminal sessions. Open more sessions first.');
+        alert(t('alert_multiexec'));
         return;
       }
       setPrevSplitMode(splitMode);
@@ -678,7 +678,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
                 onClick={toggleMultiExec}
                 style={{ padding: '4px 14px', fontSize: '12px', cursor: 'pointer', border: 'none', borderRadius: '3px', background: '#e74c3c', color: '#fff', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px' }}
              >
-               <X size={14} /> Exit multi-execution mode
+               <X size={14} /> {t('multiexec_exit')}
              </button>
           </div>
         </div>
@@ -692,7 +692,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
           
           <VerticalTab 
             icon={<FolderClosed size={16} />} 
-            label="Sessions" 
+            label={t('sb_sessions')} 
             isActive={sidebarTab === 'sessions'} 
             onClick={() => setSidebarTab('sessions')} 
           />
@@ -700,21 +700,21 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
 
           <VerticalTab 
             icon={<HardDrive size={16} />} 
-            label="Sftp" 
+            label={t('sb_sftp')} 
             isActive={sidebarTab === 'sftp'} 
             onClick={() => setSidebarTab('sftp')} 
             color="#e67e22"
           />
           <VerticalTab 
             icon={<Clock size={16} />} 
-            label="Logs" 
+            label={t('sb_logs')} 
             isActive={sidebarTab === 'logs'} 
             onClick={() => setSidebarTab('logs')} 
             color="#16a085"
           />
           <VerticalTab 
             icon={<Users size={16} />} 
-            label="Users" 
+            label={t('sb_users')} 
             isActive={sidebarTab === 'users'} 
             onClick={() => setSidebarTab('users')} 
             color="#8e44ad"
@@ -728,7 +728,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
           {/* Quick Connect Input */}
           <div style={{ padding: '4px', backgroundColor: '#f5f6f7', borderBottom: '1px solid #d4d4d4', display: 'flex', alignItems: 'center', gap: '4px' }}>
             <input 
-              placeholder="Quick connect..." 
+              placeholder={t('sidebar_quick_connect')} 
               style={{ flex: 1, border: '1px solid #ccc', padding: '4px 8px', borderRadius: '4px', outline: 'none', fontSize: '12px' }} 
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
@@ -773,21 +773,21 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
 
              {sidebarTab === 'sftp' && (
                 <div style={{ padding: '12px', color: '#555', fontSize: '12px' }}>
-                  <b style={{ marginBottom: '8px', display: 'block', color: '#1a1a1a' }}>Standalone SFTP/FTP</b>
+                  <b style={{ marginBottom: '8px', display: 'block', color: '#1a1a1a' }}>{t('sb_standalone')}</b>
                   <p style={{ fontSize: '11px', color: '#888', lineHeight: '1.4' }}>
-                    Use the Session button or ribbon to create a dedicated SFTP or FTP connection.
+                    {t('sb_standalone_desc')}
                   </p>
                   <button 
                     onClick={() => { setEditingSession({ protocol: 'sftp' }); setSessionDialogMode('create'); setSessionDialogOpen(true); }}
                     style={{ ...btnSmallStyle, marginTop: '8px', width: '100%' }}
                   >
-                    <FileText size={14} /> New SFTP Session
+                    <FileText size={14} /> {t('sb_new_sftp')}
                   </button>
                   <button 
                     onClick={() => { setEditingSession({ protocol: 'ftp', port: 21 }); setSessionDialogMode('create'); setSessionDialogOpen(true); }}
                     style={{ ...btnSmallStyle, marginTop: '6px', width: '100%' }}
                   >
-                    <Globe size={14} /> New FTP Session
+                    <Globe size={14} /> {t('sb_new_ftp')}
                   </button>
                 </div>
              )}
