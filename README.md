@@ -27,7 +27,7 @@ A robust Web Terminal application based on Xterm.js and Node.js (ssh2). This app
 
 ## 🐳 Installation & Running Locally
 
-The easiest and recommended way to run the application for development or testing is using Docker Compose:
+The easiest and recommended way to run the application for development or testing is using Docker Compose. This works seamlessly on Linux, macOS, and **Windows (using Docker Desktop / WSL2)**:
 
 1. **Clone the repository:**
    ```bash
