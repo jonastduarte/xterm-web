@@ -2,7 +2,7 @@
 
 ## 📌 Visão Geral
 
-Este documento define todas as funcionalidades, comportamentos esperados e requisitos técnicos para o desenvolvimento de um Web App de conexões remotas inspirado no MobaXterm.
+Este documento define todas as funcionalidades, comportamentos esperados e requisitos técnicos para o desenvolvimento de um Web App de conexões remotas inspirado no XTermWeb.
 
 O sistema deve permitir conexões seguras e eficientes com servidores remotos através de múltiplos protocolos, com interface moderna baseada em navegador.
 

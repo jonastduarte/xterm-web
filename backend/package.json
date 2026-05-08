@@ -1,7 +1,7 @@
 {
   "name": "xterm-web-backend",
   "version": "1.0.0",
-  "description": "Backend for Web MobaXterm Clone",
+  "description": "Backend for Web XTermWeb Clone",
   "main": "dist/index.js",
   "scripts": {
     "start": "node dist/index.js",

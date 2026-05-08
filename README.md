@@ -1,6 +1,6 @@
-# xterm-web (MobaXterm Web Clone)
+# xterm-web (XTermWeb Web Clone)
 
-Uma aplicação robusta de Web Terminal baseada em Xterm.js e Node.js (ssh2). Essa aplicação espelha funcionalidades "core" do MobaXterm para uso nativo no navegador!
+Uma aplicação robusta de Web Terminal baseada em Xterm.js e Node.js (ssh2). Essa aplicação espelha funcionalidades "core" do XTermWeb para uso nativo no navegador!
 
 ## 🚀 Tecnologias
 
@@ -42,4 +42,4 @@ O script fará o setup do Nginx, Docker, clonará o repositório, fará o build 
 Este projeto utiliza **GitHub Actions** e **GHCR** (GitHub Container Registry). O build e push das imagens ocorrem automaticamente a cada commit na branch `main`, sem necessidade de configuração manual de Secrets.
 
 ---
-*Escrito para o projeto MobaXterm Web Clone.*
+*Escrito para o projeto XTermWeb Web Clone.*

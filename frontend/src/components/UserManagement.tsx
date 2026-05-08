@@ -23,7 +23,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ apiUrl, role, currentUs
     if (role !== 'admin') {
       // Normal users only see themselves. We can mock this by just fetching nothing and relying on context, 
       // but let's just make an API that returns their own info, or mock it since they only edit password.
-      setUsers([{ id: currentUserId, username: localStorage.getItem('moba_user'), role: 'user' }]);
+      setUsers([{ id: currentUserId, username: localStorage.getItem('xtermweb_user'), role: 'user' }]);
       return;
     }
     setLoading(true);

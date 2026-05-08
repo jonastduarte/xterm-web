@@ -15,12 +15,12 @@ const LanguageContext = createContext<LanguageContextType>({
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [lang, setLangState] = useState<Lang>(
-    () => (localStorage.getItem('moba_lang') as Lang) || 'en'
+    () => (localStorage.getItem('xtermweb_lang') as Lang) || 'en'
   );
 
   const setLang = (l: Lang) => {
     setLangState(l);
-    localStorage.setItem('moba_lang', l);
+    localStorage.setItem('xtermweb_lang', l);
   };
 
   const t = (key: TKey): string => T[key][lang] ?? T[key]['en'];

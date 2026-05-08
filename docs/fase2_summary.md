@@ -1,7 +1,7 @@
 # XTerm Web — Fase 2 Implementation Summary
 
 ## 🚀 Overview
-Fase 2 focused on expanding the organizational capabilities and protocol support of XTerm Web, bringing it closer to a full MobaXterm alternative. Key improvements include a hierarchical folder system, local serial port support, and improved session automation.
+Fase 2 focused on expanding the organizational capabilities and protocol support of XTerm Web, bringing it closer to a full XTermWeb alternative. Key improvements include a hierarchical folder system, local serial port support, and improved session automation.
 
 ## ✨ New Features
 

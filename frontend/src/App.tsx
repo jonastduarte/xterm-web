@@ -14,7 +14,7 @@ export interface TabSession {
 const originalFetch = window.fetch;
 window.fetch = async function (...args) {
   let [resource, config] = args;
-  const token = localStorage.getItem('moba_token');
+  const token = localStorage.getItem('xtermweb_token');
   if (token && typeof resource === 'string' && resource.includes('/api/')) {
     if (!config) config = {};
     if (!config.headers) config.headers = {};
@@ -24,23 +24,23 @@ window.fetch = async function (...args) {
 };
 
 function App() {
-  const [token, setToken] = useState<string | null>(localStorage.getItem('moba_token'));
-  const [username, setUsername] = useState<string | null>(localStorage.getItem('moba_user'));
+  const [token, setToken] = useState<string | null>(localStorage.getItem('xtermweb_token'));
+  const [username, setUsername] = useState<string | null>(localStorage.getItem('xtermweb_user'));
 
   const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
   const handleLogin = (t: string, u: string) => {
-    localStorage.setItem('moba_token', t);
-    localStorage.setItem('moba_user', u);
+    localStorage.setItem('xtermweb_token', t);
+    localStorage.setItem('xtermweb_user', u);
     setToken(t);
     setUsername(u);
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('moba_token');
-    localStorage.removeItem('moba_user');
-    localStorage.removeItem('moba_tabs');
-    localStorage.removeItem('moba_active_tab');
+    localStorage.removeItem('xtermweb_token');
+    localStorage.removeItem('xtermweb_user');
+    localStorage.removeItem('xtermweb_tabs');
+    localStorage.removeItem('xtermweb_active_tab');
     setToken(null);
     setUsername(null);
   };

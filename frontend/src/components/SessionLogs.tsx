@@ -40,7 +40,7 @@ const SessionLogs: React.FC<SessionLogsProps> = ({ apiUrl }) => {
   };
 
   const handleDownload = (filename: string) => {
-    const token = localStorage.getItem('moba_token');
+    const token = localStorage.getItem('xtermweb_token');
     // Using fetch to download to easily attach auth headers if needed,
     // though our token fetch interceptor already handles it.
     // Wait, the interceptor intercepts fetch, but to trigger a download we need a blob.

@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "Starting deployment setup for MobaXterm Web Clone..."
+echo "Starting deployment setup for XTermWeb Web Clone..."
 
 # Update and install dependencies
 sudo apt-get update

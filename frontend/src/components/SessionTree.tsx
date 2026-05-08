@@ -129,7 +129,7 @@ const SessionTree: React.FC<SessionTreeProps> = ({ apiUrl, onConnect, onEdit, on
   const handleImport = () => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.json,.mobaconf';
+    input.accept = '.json,.xtermwebconf';
     input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
@@ -137,8 +137,8 @@ const SessionTree: React.FC<SessionTreeProps> = ({ apiUrl, onConnect, onEdit, on
       reader.onload = () => {
         let data: any = null;
         try {
-          if (file.name.endsWith('.mobaconf')) {
-            data = parseMobaConf(reader.result as string);
+          if (file.name.endsWith('.xtermwebconf')) {
+            data = parseXTermWebConf(reader.result as string);
           } else {
             data = JSON.parse(reader.result as string);
           }
@@ -163,7 +163,7 @@ const SessionTree: React.FC<SessionTreeProps> = ({ apiUrl, onConnect, onEdit, on
     input.click();
   };
 
-  const parseMobaConf = (text: string) => {
+  const parseXTermWebConf = (text: string) => {
     const lines = text.split('\n');
     const importFolders: any[] = [];
     const importSessions: any[] = [];

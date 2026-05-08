@@ -64,12 +64,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
   const [sidebarTab, setSidebarTab] = useState<'sessions' | 'tools' | 'macros' | 'sftp' | 'users' | 'logs'>('sessions');
   const [tabs, setTabs] = useState<TabSession[]>(() => {
     try {
-      const saved = localStorage.getItem('moba_tabs');
+      const saved = localStorage.getItem('xtermweb_tabs');
       if (saved) return JSON.parse(saved).map((t: any) => ({ ...t, ws: null }));
     } catch {}
     return [];
   });
-  const [activeTabId, setActiveTabId] = useState<string | null>(() => localStorage.getItem('moba_active_tab') || null);
+  const [activeTabId, setActiveTabId] = useState<string | null>(() => localStorage.getItem('xtermweb_active_tab') || null);
   const [splitMode, setSplitMode] = useState<'single' | 'vertical' | 'horizontal' | 'grid'>('single');
   const [splitDropdownOpen, setSplitDropdownOpen] = useState(false);
   const [isSessionDialogOpen, setSessionDialogOpen] = useState(false);
@@ -83,7 +83,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
   const [quickConnectState, setQuickConnectState] = useState<{ host: string; user: string; port: number; name: string } | null>(null);
   const [quickConnectPassword, setQuickConnectPassword] = useState('');
   const [hasVault, setHasVault] = useState(false);
-  const [masterPassword, setMasterPassword] = useState<string | null>(sessionStorage.getItem('moba_master_password'));
+  const [masterPassword, setMasterPassword] = useState<string | null>(sessionStorage.getItem('xtermweb_master_password'));
   const [isVaultModalOpen, setVaultModalOpen] = useState(false);
   const [vaultModalCallback, setVaultModalCallback] = useState<{ resolve: (pass: string) => void, reject: () => void } | null>(null);
   const [vaultActionType, setVaultActionType] = useState<'unlock' | 'setup'>('unlock');
@@ -93,17 +93,17 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
   // Tab context menu
   const [tabContextMenu, setTabContextMenu] = useState<{ x: number; y: number; tabId: string } | null>(null);
   // Terminal font size
-  const [termFontSize, setTermFontSize] = useState(() => parseInt(localStorage.getItem('moba_font_size') || '14'));
+  const [termFontSize, setTermFontSize] = useState(() => parseInt(localStorage.getItem('xtermweb_font_size') || '14'));
   // Theme
-  const [theme, setTheme] = useState<'dark' | 'light'>(() => (localStorage.getItem('moba_theme') as any) || 'dark');
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => (localStorage.getItem('xtermweb_theme') as any) || 'dark');
   // View dropdown
   const [viewDropdownOpen, setViewDropdownOpen] = useState(false);
   // Settings dropdown
   const [settingsDropdownOpen, setSettingsDropdownOpen] = useState(false);
   // Default credentials
-  const [defaultCredsEnabled, setDefaultCredsEnabled] = useState(() => localStorage.getItem('moba_default_creds_enabled') === 'true');
-  const [defaultUsername, setDefaultUsername] = useState(localStorage.getItem('moba_default_username') || '');
-  const [defaultPassword, setDefaultPassword] = useState(localStorage.getItem('moba_default_password') || '');
+  const [defaultCredsEnabled, setDefaultCredsEnabled] = useState(() => localStorage.getItem('xtermweb_default_creds_enabled') === 'true');
+  const [defaultUsername, setDefaultUsername] = useState(localStorage.getItem('xtermweb_default_username') || '');
+  const [defaultPassword, setDefaultPassword] = useState(localStorage.getItem('xtermweb_default_password') || '');
   const [showDefaultPassModal, setShowDefaultPassModal] = useState(false);
   const [defaultPassInput, setDefaultPassInput] = useState('');
   const [defaultUserInput, setDefaultUserInput] = useState('');
@@ -174,12 +174,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
       const { ws, ...rest } = t;
       return rest;
     });
-    localStorage.setItem('moba_tabs', JSON.stringify(serializable));
+    localStorage.setItem('xtermweb_tabs', JSON.stringify(serializable));
   }, [tabs]);
 
   useEffect(() => {
-    if (activeTabId) localStorage.setItem('moba_active_tab', activeTabId);
-    else localStorage.removeItem('moba_active_tab');
+    if (activeTabId) localStorage.setItem('xtermweb_active_tab', activeTabId);
+    else localStorage.removeItem('xtermweb_active_tab');
   }, [activeTabId]);
 
 
@@ -225,7 +225,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
         });
         if (!res.ok) throw new Error(await res.text());
         setMasterPassword(vaultPasswordInput);
-        sessionStorage.setItem('moba_master_password', vaultPasswordInput);
+        sessionStorage.setItem('xtermweb_master_password', vaultPasswordInput);
         setHasVault(true);
         setVaultModalOpen(false);
         vaultModalCallback?.resolve(vaultPasswordInput);
@@ -240,7 +240,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
         const data = await res.json();
         if (data.valid) {
           setMasterPassword(vaultPasswordInput);
-          sessionStorage.setItem('moba_master_password', vaultPasswordInput);
+          sessionStorage.setItem('xtermweb_master_password', vaultPasswordInput);
           setVaultModalOpen(false);
           vaultModalCallback?.resolve(vaultPasswordInput);
         } else {
@@ -318,7 +318,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
       websocket.onopen = () => {
         websocket.send(JSON.stringify({
           type: 'connect',
-          payload: { ...realSession, protocol, tabId, masterPassword: currentMasterPass, token: localStorage.getItem('moba_token'), persistenceId: tabId }
+          payload: { ...realSession, protocol, tabId, masterPassword: currentMasterPass, token: localStorage.getItem('xtermweb_token'), persistenceId: tabId }
         }));
         setTabs(prev => prev.map(t =>
           t.id === tabId ? { ...t, ws: websocket, session: realSession } : t
@@ -373,7 +373,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
   
   useEffect(() => {
     // Restore connections for all persisted tabs
-    const savedTabs = localStorage.getItem('moba_tabs');
+    const savedTabs = localStorage.getItem('xtermweb_tabs');
     if (savedTabs) {
       try {
         const parsed = JSON.parse(savedTabs);
@@ -564,10 +564,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
                 <Maximize size={14} /> {t('view_fullscreen')}
               </div>
               <div style={{ height: '1px', backgroundColor: '#eee', margin: '4px 0' }} />
-              <div style={splitMenuItemStyle} onClick={() => { setTermFontSize(s => { const n = Math.min(24, s + 1); localStorage.setItem('moba_font_size', String(n)); return n; }); setViewDropdownOpen(false); }}>
+              <div style={splitMenuItemStyle} onClick={() => { setTermFontSize(s => { const n = Math.min(24, s + 1); localStorage.setItem('xtermweb_font_size', String(n)); return n; }); setViewDropdownOpen(false); }}>
                 <ZoomIn size={14} /> {t('view_zoomin')} ({termFontSize}px)
               </div>
-              <div style={splitMenuItemStyle} onClick={() => { setTermFontSize(s => { const n = Math.max(8, s - 1); localStorage.setItem('moba_font_size', String(n)); return n; }); setViewDropdownOpen(false); }}>
+              <div style={splitMenuItemStyle} onClick={() => { setTermFontSize(s => { const n = Math.max(8, s - 1); localStorage.setItem('xtermweb_font_size', String(n)); return n; }); setViewDropdownOpen(false); }}>
                 <ZoomOut size={14} /> {t('view_zoomout')} ({termFontSize}px)
               </div>
               <div style={{ height: '1px', backgroundColor: '#eee', margin: '4px 0' }} />
@@ -598,7 +598,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
           <RibbonBtn icon={<Settings size={22} color="#95a5a6" />} label={t('ribbon_settings')} onClick={() => { setSettingsDropdownOpen(!settingsDropdownOpen); setViewDropdownOpen(false); setSplitDropdownOpen(false); setLangDropdownOpen(false); }} />
           {settingsDropdownOpen && (
             <div style={{ position: 'absolute', top: '100%', left: 0, backgroundColor: '#fff', border: '1px solid #ccc', boxShadow: '0 4px 12px rgba(0,0,0,0.2)', zIndex: 1000, display: 'flex', flexDirection: 'column', minWidth: '240px' }}>
-              <div style={splitMenuItemStyle} onClick={() => { const th = theme === 'dark' ? 'light' : 'dark'; setTheme(th); localStorage.setItem('moba_theme', th); setSettingsDropdownOpen(false); }}>
+              <div style={splitMenuItemStyle} onClick={() => { const th = theme === 'dark' ? 'light' : 'dark'; setTheme(th); localStorage.setItem('xtermweb_theme', th); setSettingsDropdownOpen(false); }}>
                 {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />} {t('settings_theme')}: {theme === 'dark' ? t('settings_theme_dark') : t('settings_theme_light')} {t('settings_theme_toggle')}
               </div>
               <div style={{ height: '1px', backgroundColor: '#eee', margin: '4px 0' }} />
@@ -621,7 +621,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
               <div style={splitMenuItemStyle} onClick={() => { const data = JSON.stringify({ tabs: tabs.map(t => ({ session: t.session, protocol: t.protocol, label: t.label })), settings: { theme, termFontSize, defaultPassword } }); const blob = new Blob([data], { type: 'application/json' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'xterm-web-config.json'; a.click(); setSettingsDropdownOpen(false); }}>
                 <Download size={14} /> {t('settings_export')}
               </div>
-              <div style={splitMenuItemStyle} onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = '.json'; input.onchange = (e: any) => { const file = e.target.files[0]; if (file) { const reader = new FileReader(); reader.onload = (ev) => { try { const cfg = JSON.parse(ev.target?.result as string); if (cfg.settings) { if (cfg.settings.theme) { setTheme(cfg.settings.theme); localStorage.setItem('moba_theme', cfg.settings.theme); } if (cfg.settings.termFontSize) { setTermFontSize(cfg.settings.termFontSize); localStorage.setItem('moba_font_size', String(cfg.settings.termFontSize)); } if (cfg.settings.defaultPassword) { setDefaultPassword(cfg.settings.defaultPassword); localStorage.setItem('moba_default_password', cfg.settings.defaultPassword); } } } catch {} }; reader.readAsText(file); } }; input.click(); setSettingsDropdownOpen(false); }}>
+              <div style={splitMenuItemStyle} onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = '.json'; input.onchange = (e: any) => { const file = e.target.files[0]; if (file) { const reader = new FileReader(); reader.onload = (ev) => { try { const cfg = JSON.parse(ev.target?.result as string); if (cfg.settings) { if (cfg.settings.theme) { setTheme(cfg.settings.theme); localStorage.setItem('xtermweb_theme', cfg.settings.theme); } if (cfg.settings.termFontSize) { setTermFontSize(cfg.settings.termFontSize); localStorage.setItem('xtermweb_font_size', String(cfg.settings.termFontSize)); } if (cfg.settings.defaultPassword) { setDefaultPassword(cfg.settings.defaultPassword); localStorage.setItem('xtermweb_default_password', cfg.settings.defaultPassword); } } } catch {} }; reader.readAsText(file); } }; input.click(); setSettingsDropdownOpen(false); }}>
                 <Upload size={14} /> {t('settings_import')}
               </div>
               <div style={{ height: '1px', backgroundColor: '#eee', margin: '4px 0' }} />
@@ -658,8 +658,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
            <button 
              onClick={() => {
                tabs.forEach(t => closeTab(t.id));
-               localStorage.removeItem('moba_tabs');
-               localStorage.removeItem('moba_active_tab');
+               localStorage.removeItem('xtermweb_tabs');
+               localStorage.removeItem('xtermweb_active_tab');
                onLogout();
              }} 
              style={{ 
@@ -929,10 +929,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
                   <Maximize size={14} /> Fullscreen
                 </div>
                 <div style={{ height: '1px', backgroundColor: '#eee', margin: '2px 0' }} />
-                <div style={splitMenuItemStyle} onClick={() => { setTermFontSize(s => { const n = Math.min(24, s + 1); localStorage.setItem('moba_font_size', String(n)); return n; }); setTabContextMenu(null); }}>
+                <div style={splitMenuItemStyle} onClick={() => { setTermFontSize(s => { const n = Math.min(24, s + 1); localStorage.setItem('xtermweb_font_size', String(n)); return n; }); setTabContextMenu(null); }}>
                   <ZoomIn size={14} /> Increase Font
                 </div>
-                <div style={splitMenuItemStyle} onClick={() => { setTermFontSize(s => { const n = Math.max(8, s - 1); localStorage.setItem('moba_font_size', String(n)); return n; }); setTabContextMenu(null); }}>
+                <div style={splitMenuItemStyle} onClick={() => { setTermFontSize(s => { const n = Math.max(8, s - 1); localStorage.setItem('xtermweb_font_size', String(n)); return n; }); setTabContextMenu(null); }}>
                   <ZoomOut size={14} /> Decrease Font
                 </div>
                 <div style={{ height: '1px', backgroundColor: '#eee', margin: '2px 0' }} />
@@ -1259,9 +1259,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
                     setDefaultCredsEnabled(defaultCredsEnabledInput);
                     setDefaultUsername(defaultUserInput);
                     setDefaultPassword(defaultPassInput);
-                    localStorage.setItem('moba_default_creds_enabled', String(defaultCredsEnabledInput));
-                    localStorage.setItem('moba_default_username', defaultUserInput);
-                    localStorage.setItem('moba_default_password', defaultPassInput);
+                    localStorage.setItem('xtermweb_default_creds_enabled', String(defaultCredsEnabledInput));
+                    localStorage.setItem('xtermweb_default_username', defaultUserInput);
+                    localStorage.setItem('xtermweb_default_password', defaultPassInput);
                     setShowDefaultPassModal(false);
                   }
                 }}
@@ -1274,9 +1274,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
                 setDefaultCredsEnabled(defaultCredsEnabledInput);
                 setDefaultUsername(defaultUserInput);
                 setDefaultPassword(defaultPassInput);
-                localStorage.setItem('moba_default_creds_enabled', String(defaultCredsEnabledInput));
-                localStorage.setItem('moba_default_username', defaultUserInput);
-                localStorage.setItem('moba_default_password', defaultPassInput);
+                localStorage.setItem('xtermweb_default_creds_enabled', String(defaultCredsEnabledInput));
+                localStorage.setItem('xtermweb_default_username', defaultUserInput);
+                localStorage.setItem('xtermweb_default_password', defaultPassInput);
                 setShowDefaultPassModal(false);
               }} style={{ padding: '8px 16px', border: 'none', background: '#005a9e', color: '#fff', cursor: 'pointer', borderRadius: '4px', fontSize: '12px' }}>Save</button>
               {(defaultUsername || defaultPassword) && <button onClick={() => {
@@ -1286,9 +1286,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
                 setDefaultUserInput('');
                 setDefaultPassInput('');
                 setDefaultCredsEnabledInput(false);
-                localStorage.removeItem('moba_default_creds_enabled');
-                localStorage.removeItem('moba_default_username');
-                localStorage.removeItem('moba_default_password');
+                localStorage.removeItem('xtermweb_default_creds_enabled');
+                localStorage.removeItem('xtermweb_default_username');
+                localStorage.removeItem('xtermweb_default_password');
                 setShowDefaultPassModal(false);
               }} style={{ padding: '8px 16px', border: '1px solid #e74c3c', background: '#fff', color: '#e74c3c', cursor: 'pointer', borderRadius: '4px', fontSize: '12px' }}>Clear</button>}
             </div>
