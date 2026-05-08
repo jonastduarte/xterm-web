@@ -822,6 +822,8 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
                 <SessionLogs apiUrl={apiUrl} />
              )}
           </div>
+        </div>
+
         {/* Resizer */}
             <div 
               style={{ width: '4px', cursor: 'col-resize', backgroundColor: '#E1E1E1' }}
