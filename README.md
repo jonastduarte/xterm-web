@@ -2,81 +2,81 @@
 
 ![XTerm Web Login](docs/images/login.png)
 
-Uma aplicação robusta de Web Terminal baseada em Xterm.js e Node.js (ssh2). Essa aplicação espelha funcionalidades "core" de gerenciadores de conexão remota para uso nativo diretamente no seu navegador, de forma segura e responsiva.
+A robust Web Terminal application based on Xterm.js and Node.js (ssh2). This application brings the "core" features of remote connection managers natively to your browser, in a secure and responsive way.
 
-## 🌟 Principais Funcionalidades
+## 🌟 Main Features
 
 ![Main Interface](docs/images/main.png)
 
-* **Terminal Completo via Web**: Conexões SSH, SFTP e FTP integradas usando WebSockets. O frontend se comunica com um backend em Node.js que gerencia a conexão real.
-* **Organização em Pastas**: Crie estruturas de pastas hierárquicas para organizar e agrupar centenas de servidores.
-* **Multi-idiomas (i18n)**: Suporte completo para Inglês, Português, Espanhol e Mandarim, aplicados a todas as áreas da aplicação (UI e Alertas).
-* **Painel de Transferência de Arquivos (SFTP)**: Acesse, baixe, edite e suba arquivos de forma fácil arrastando e soltando. Permite abrir o FTP/SFTP simultâneo à sessão SSH, ou uma aba isolada apenas para arquivos.
-* **Cofre de Senhas (Vault)**: Criptografe e salve suas senhas de conexões em um cofre local utilizando uma Master Password para maior segurança. As senhas nunca trafegam puras sem proteção.
-* **Modo Multi-Execução (MultiExec)**: Envie o mesmo comando simultaneamente para múltiplos terminais abertos.
-* **Gestão de Usuários e Logs**: Interface de gerenciamento de usuários internos, painel de logs consolidados de tudo que acontece no sistema e controle de acessos (Admin/User).
-* **Interface Dinâmica e Customizável**: Temas Dark/Light, controle de fonte, abas estilo IDE, opção para esconder barra lateral, atalhos rápidos e suporte a Macros.
+* **Full Web-based Terminal**: Integrated SSH, SFTP, and FTP connections using WebSockets. The frontend communicates with a Node.js backend that handles the actual connections.
+* **Folder Organization**: Create hierarchical folder structures to organize and group hundreds of servers effortlessly.
+* **Multi-language Support (i18n)**: Full support for English, Portuguese, Spanish, and Mandarin, applied across the entire application (UI and Alerts).
+* **File Transfer Panel (SFTP)**: Access, download, edit, and upload files easily using drag-and-drop. Open an FTP/SFTP session alongside your SSH session or as a standalone file browser tab.
+* **Password Vault**: Encrypt and store your connection passwords in a local vault using a Master Password for enhanced security. Passwords are never transmitted in plain text without protection.
+* **Multi-Execution Mode (MultiExec)**: Send the same command simultaneously to multiple open terminals.
+* **User & Log Management**: Internal user management interface, consolidated logs panel for all system activity, and role-based access control (Admin/User).
+* **Dynamic & Customizable UI**: Dark/Light themes, font size controls, IDE-style tabs, a collapsible sidebar, quick shortcuts, and Macro support.
 
 ![New Session Dialog](docs/images/session.png)
 
-## 🚀 Tecnologias
+## 🚀 Technologies
 
 - **Frontend:** React, TypeScript, Vite, Xterm.js, Lucide-React
 - **Backend:** Node.js, Express, Ws (WebSockets), ssh2, basic-ftp, SQLite
-- **Infraestrutura:** Docker, Docker Compose, Nginx, GitHub Actions
+- **Infrastructure:** Docker, Docker Compose, Nginx, GitHub Actions
 
-## 🐳 Instalação & Execução Local
+## 🐳 Installation & Running Locally
 
-A maneira mais fácil e recomendada de rodar a aplicação para desenvolvimento ou testes é utilizando o Docker Compose:
+The easiest and recommended way to run the application for development or testing is using Docker Compose:
 
-1. **Clone o repositório:**
+1. **Clone the repository:**
    ```bash
    git clone https://github.com/jonastduarte/xterm-web.git
    cd xterm-web
    ```
 
-2. **Copie o arquivo de variáveis de ambiente:**
+2. **Copy the environment variables file:**
    ```bash
    cp .env.example .env
    ```
 
-3. **Inicie os containers:**
+3. **Start the containers:**
    ```bash
    docker-compose up -d --build
    ```
 
-4. **Acesse a aplicação:**
+4. **Access the application:**
    * Frontend (UI): `http://localhost`
-   * A API e conexões WebSockets estarão expostas na porta `3000` (utilizadas internamente pelo proxy).
+   * The API and WebSocket connections are exposed on port `3000` (used internally by the proxy).
 
-5. **Acesso padrão:**
+5. **Default login credentials:**
    * Username: `admin`
-   * Senha: `password` *(Altere nas configurações de Usuários)*
+   * Password: `password` *(Change this in the Users settings)*
 
-## 📦 Deploy para Produção (VPS Linux)
+## 📦 Production Deployment (Linux VPS)
 
-Se você tem um servidor Ubuntu ou Debian e quer rodar o XTerm Web na nuvem com certificado SSL automático:
+If you have an Ubuntu or Debian server and want to run XTerm Web in the cloud with an automatic SSL certificate:
 
-1. Baixe a aplicação para a VPS e conceda permissão de execução ao script:
+1. Download the application to your VPS and grant execution permissions to the script:
    ```bash
    chmod +x deploy.sh
    ```
-2. Execute o instalador automático:
+2. Run the automated installer:
    ```bash
    sudo ./deploy.sh
    ```
 
-O script fará o setup do Nginx, Docker, clonará o repositório, efetuará o build com `docker-compose` e emitirá um certificado SSL válido através do Certbot para o seu domínio.
+The script will set up Nginx and Docker, clone the repository, build it with `docker-compose`, and issue a valid SSL certificate via Certbot for your domain.
 
-**Requisitos para Deploy:**
-- Uma VPS (Ubuntu Server)
-- Um domínio válido apontando para o IP da VPS (Registros A)
-- Permissões de superusuário (Sudo)
+**Deployment Requirements:**
+- A VPS (Ubuntu Server)
+- A valid domain pointing to the VPS IP (A Records)
+- Superuser (Sudo) privileges
 
-## 🔄 Automação CI/CD
+## 🔄 CI/CD Automation
 
-Este projeto utiliza **GitHub Actions** e **GHCR** (GitHub Container Registry). 
-O build de contêineres e o envio das imagens Docker (push) ocorrem de forma automática a cada novo commit na branch `main`.
+This project uses **GitHub Actions** and **GHCR** (GitHub Container Registry). 
+Container builds and Docker image pushes occur automatically on every new commit to the `main` branch.
 
 ---
-*Criado com o objetivo de oferecer a melhor experiência em terminais remotos via browser.*
+*Created with the goal of providing the best remote terminal experience via the browser.*
