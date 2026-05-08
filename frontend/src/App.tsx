@@ -39,6 +39,8 @@ function App() {
   const handleLogout = () => {
     localStorage.removeItem('moba_token');
     localStorage.removeItem('moba_user');
+    localStorage.removeItem('moba_tabs');
+    localStorage.removeItem('moba_active_tab');
     setToken(null);
     setUsername(null);
   };

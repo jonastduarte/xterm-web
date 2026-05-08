@@ -656,7 +656,12 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
              <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#2c3e50' }}>{username}</span>
            </div>
            <button 
-             onClick={onLogout} 
+             onClick={() => {
+               tabs.forEach(t => closeTab(t.id));
+               localStorage.removeItem('moba_tabs');
+               localStorage.removeItem('moba_active_tab');
+               onLogout();
+             }} 
              style={{ 
                backgroundColor: '#fff', 
                border: '1px solid #dcdde1', 
