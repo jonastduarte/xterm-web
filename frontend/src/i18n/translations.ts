@@ -209,6 +209,8 @@ export const T = {
   sb_standalone_desc:{ en: 'Use the Session button or ribbon to create a dedicated SFTP or FTP connection.', pt: 'Use o botão Sessão ou o menu superior para criar uma conexão SFTP/FTP dedicada.', es: 'Use el botón Sesión o el menú superior para crear una conexión SFTP o FTP dedicada.', zh: '使用会话按钮或顶部菜单创建专用的SFTP或FTP连接。' },
   sb_new_sftp:       { en: 'New SFTP Session', pt: 'Nova Sessão SFTP', es: 'Nueva Sesión SFTP', zh: '新建 SFTP 会话' },
   sb_new_ftp:        { en: 'New FTP Session', pt: 'Nova Sessão FTP', es: 'Nueva Sesión FTP', zh: '新建 FTP 会话' },
+  sb_collapse:       { en: 'Collapse sidebar', pt: 'Recolher aba lateral', es: 'Contraer barra lateral', zh: '折叠侧边栏' },
+  sb_expand:         { en: 'Expand sidebar', pt: 'Expandir aba lateral', es: 'Expandir barra lateral', zh: '展开侧边栏' },
 } as const;
 
 export type TKey = keyof typeof T;

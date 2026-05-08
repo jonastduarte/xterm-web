@@ -42,7 +42,9 @@ import {
   Sun,
   Download,
   Upload,
-  Key
+  Key,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 interface MainLayoutProps {
@@ -58,6 +60,7 @@ let tabCounter = 0;
 const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, role, userId }) => {
   const { lang, setLang, t } = useLanguage();
   const [sidebarWidth, setSidebarWidth] = useState(250);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [sidebarTab, setSidebarTab] = useState<'sessions' | 'tools' | 'macros' | 'sftp' | 'users' | 'logs'>('sessions');
   const [tabs, setTabs] = useState<TabSession[]>(() => {
     try {
@@ -112,6 +115,15 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
   const settingsDropdownRef = useRef<HTMLDivElement>(null);
   const langDropdownRef = useRef<HTMLDivElement>(null);
   const [langDropdownOpen, setLangDropdownOpen] = useState(false);
+
+  const handleTabClick = (tab: 'sessions' | 'sftp' | 'users' | 'logs') => {
+    if (sidebarTab === tab) {
+      setIsSidebarOpen(!isSidebarOpen);
+    } else {
+      setSidebarTab(tab);
+      setIsSidebarOpen(true);
+    }
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -694,7 +706,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
             icon={<FolderClosed size={16} />} 
             label={t('sb_sessions')} 
             isActive={sidebarTab === 'sessions'} 
-            onClick={() => setSidebarTab('sessions')} 
+            onClick={() => handleTabClick('sessions')} 
           />
 
 
@@ -702,28 +714,38 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
             icon={<HardDrive size={16} />} 
             label={t('sb_sftp')} 
             isActive={sidebarTab === 'sftp'} 
-            onClick={() => setSidebarTab('sftp')} 
+            onClick={() => handleTabClick('sftp')} 
             color="#e67e22"
           />
           <VerticalTab 
             icon={<Clock size={16} />} 
             label={t('sb_logs')} 
             isActive={sidebarTab === 'logs'} 
-            onClick={() => setSidebarTab('logs')} 
+            onClick={() => handleTabClick('logs')} 
             color="#16a085"
           />
           <VerticalTab 
             icon={<Users size={16} />} 
             label={t('sb_users')} 
             isActive={sidebarTab === 'users'} 
-            onClick={() => setSidebarTab('users')} 
+            onClick={() => handleTabClick('users')} 
             color="#8e44ad"
           />
           
+          <div style={{ flex: 1 }} />
+          <div 
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
+            style={{ padding: '12px 0', cursor: 'pointer', opacity: 0.6, width: '100%', display: 'flex', justifyContent: 'center' }}
+            title={isSidebarOpen ? t('sb_collapse') : t('sb_expand')}
+          >
+            {isSidebarOpen ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
+          </div>
         </div>
 
         {/* Left Sidebar Panel */}
-        <div style={{ width: sidebarWidth, backgroundColor: '#FFFFFF', borderRight: '1px solid #D4D4D4', display: 'flex', flexDirection: 'column' }}>
+        {isSidebarOpen && (
+          <>
+            <div style={{ width: sidebarWidth, backgroundColor: '#FFFFFF', borderRight: '1px solid #D4D4D4', display: 'flex', flexDirection: 'column' }}>
           
           {/* Quick Connect Input */}
           <div style={{ padding: '4px', backgroundColor: '#f5f6f7', borderBottom: '1px solid #d4d4d4', display: 'flex', alignItems: 'center', gap: '4px' }}>
@@ -800,29 +822,29 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
                 <SessionLogs apiUrl={apiUrl} />
              )}
           </div>
-        </div>
-
         {/* Resizer */}
-        <div 
-          style={{ width: '4px', cursor: 'col-resize', backgroundColor: '#E1E1E1' }}
-          onMouseDown={(e) => {
-            const startX = e.clientX;
-            const startWidth = sidebarWidth;
-            
-            const onMouseMove = (moveEvent: MouseEvent) => {
-              const newWidth = Math.max(150, Math.min(600, startWidth + moveEvent.clientX - startX));
-              setSidebarWidth(newWidth);
-            };
-            
-            const onMouseUp = () => {
-              document.removeEventListener('mousemove', onMouseMove);
-              document.removeEventListener('mouseup', onMouseUp);
-            };
-            
-            document.addEventListener('mousemove', onMouseMove);
-            document.addEventListener('mouseup', onMouseUp);
-          }}
-        />
+            <div 
+              style={{ width: '4px', cursor: 'col-resize', backgroundColor: '#E1E1E1' }}
+              onMouseDown={(e) => {
+                const startX = e.clientX;
+                const startWidth = sidebarWidth;
+                
+                const onMouseMove = (moveEvent: MouseEvent) => {
+                  const newWidth = Math.max(150, Math.min(600, startWidth + moveEvent.clientX - startX));
+                  setSidebarWidth(newWidth);
+                };
+                
+                const onMouseUp = () => {
+                  document.removeEventListener('mousemove', onMouseMove);
+                  document.removeEventListener('mouseup', onMouseUp);
+                };
+                
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+              }}
+            />
+          </>
+        )}
 
         {/* Right Content / Terminal */}
         <div style={{ flex: 1, backgroundColor: '#1e1e1e', display: 'flex', flexDirection: 'column', position: 'relative' }}>
