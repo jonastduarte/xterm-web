@@ -483,22 +483,6 @@ app.post('/api/sftp/upload', upload.single('file'), (req, res) => {
   if (!file) return res.status(400).json({ error: 'No file uploaded' });
 
   const ssh = new Client();
-  ssh.on('ready', () => {
-    ssh.sftp((err, sftp) => {
-      if (err) {
-        ssh.end();
-        return res.status(500).json({ error: 'SFTP initialization failed' });
-      }
-      
-      const remoteFile = targetPath.endsWith('/') ? `${targetPath}${file.originalname}` : `${targetPath}/${file.originalname}`;
-      sftp.fastPut(file.path, remoteFile, (uploadErr) => {
-        ssh.end();
-        // Clean up temp file
-        try { fs.unlinkSync(file.path); } catch (e) { /* ignore */ }
-        if (uploadErr) return res.status(500).json({ error: uploadErr.message });
-        res.json({ message: 'File uploaded successfully', path: remoteFile });
-      });
-    });
   let finalPass = password;
   if (password && req.body.masterPassword && password !== '***') {
     const dec = decrypt(password, req.body.masterPassword);
