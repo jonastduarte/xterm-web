@@ -24,6 +24,13 @@ A robust Web Terminal application based on Xterm.js and Node.js (ssh2). This app
 - **Frontend:** React, TypeScript, Vite, Xterm.js, Lucide-React
 - **Backend:** Node.js, Express, Ws (WebSockets), ssh2, basic-ftp, SQLite
 - **Infrastructure:** Docker, Docker Compose, Nginx, GitHub Actions
+ 
+## 🛡️ Security Warning
+ 
+For production environments, it is critical to configure your security keys correctly:
+* **JWT_SECRET**: Make sure to fill the `JWT_SECRET` variable with a strong, random key to ensure that login tokens are secure in the production environment.
+* **Default Password**: Change the default admin password immediately after your first login in the **Users** section.
+* **Master Password**: Use a strong Master Password for your Vault to ensure your connection credentials are safe.
 
 ## 🐳 Installation & Running Locally
 
