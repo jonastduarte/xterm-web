@@ -536,14 +536,14 @@ app.get('/api/sftp/download', (req, res) => {
     });
   }).on('error', (err: any) => {
     if (!res.headersSent) res.status(500).json({ error: err.message });
-  }).connect({ 
-    host, 
-    port: Number(port) || 22, 
-    username, 
-    password: req.query.auth_type === 'password' ? password : undefined,
-    privateKey: req.query.auth_type === 'key' ? req.query.private_key : undefined,
-    passphrase: req.query.auth_type === 'key' ? password : undefined
-  });
+      }).connect({ 
+        host: host as string, 
+        port: Number(port) || 22, 
+        username: username as string, 
+        password: req.query.auth_type === 'password' ? (password as string) : undefined,
+        privateKey: req.query.auth_type === 'key' ? (req.query.private_key as string) : undefined,
+        passphrase: req.query.auth_type === 'key' ? (password as string) : undefined
+      });
 });
 
 // ===== FTP Endpoints =====
@@ -564,7 +564,7 @@ app.post('/api/ftp/list', async (req, res) => {
     });
     
     const list = await client.list(targetPath || '/');
-    const simplifiedList = list.map(item => ({
+    const simplifiedList = list.map((item: any) => ({
       filename: item.name,
       longname: `${item.type === ftp.FileType.Directory ? 'd' : '-'}${item.permissions?.toString() || 'rwxr-xr-x'} ${item.user || '-'} ${item.group || '-'} ${item.size} ${item.rawModifiedAt || ''} ${item.name}`,
       isDirectory: item.type === ftp.FileType.Directory,
@@ -723,7 +723,7 @@ wss.on('connection', (ws: WebSocket) => {
     }
 
     if (data.type === 'connect') {
-      const { host, port, username, password, protocol, token, persistenceId } = data.payload;
+      const { host, port, username, password, protocol, token, persistenceId, auth_type, private_key } = data.payload;
       currentPersistenceId = persistenceId;
       
       const decoded = decodeToken(token || '');
