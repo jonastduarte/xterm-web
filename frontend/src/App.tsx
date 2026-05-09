@@ -27,7 +27,8 @@ function App() {
   const [token, setToken] = useState<string | null>(localStorage.getItem('xtermweb_token'));
   const [username, setUsername] = useState<string | null>(localStorage.getItem('xtermweb_user'));
 
-  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+  const apiUrl = import.meta.env.VITE_API_URL || (window.location.hostname.includes('localhost') ? 'http://localhost:3000' : '');
+  console.log('Resolved API URL:', apiUrl || '(relative)');
 
   const handleLogin = (t: string, u: string) => {
     localStorage.setItem('xtermweb_token', t);

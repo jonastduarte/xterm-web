@@ -257,7 +257,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
   };
 
   const createConnection = useCallback((session: any, existingTabId?: string) => {
-    const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:3000';
+    const wsUrl = import.meta.env.VITE_WS_URL || (window.location.hostname.includes('localhost') ? 'ws://localhost:3000' : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`);
     const protocol = session.protocol || 'ssh';
     const tabId = existingTabId || `tab-${++tabCounter}-${Date.now()}`;
 
