@@ -220,7 +220,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
       try {
         const res = await fetch(`${apiUrl}/api/vault/setup`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('xtermweb_token')}`
+          },
           body: JSON.stringify({ masterPassword: vaultPasswordInput })
         });
         if (!res.ok) throw new Error(await res.text());
@@ -234,7 +237,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
       try {
         const res = await fetch(`${apiUrl}/api/vault/verify`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('xtermweb_token')}`
+          },
           body: JSON.stringify({ masterPassword: vaultPasswordInput })
         });
         const data = await res.json();
@@ -270,7 +276,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
     // Fetch the real credentials from the connect endpoint before opening WS
     const getCredentials = (): Promise<any> => {
       if (session.id) {
-        return fetch(`${apiUrl}/api/sessions/${session.id}/connect`)
+        return fetch(`${apiUrl}/api/sessions/${session.id}/connect`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('xtermweb_token')}` }
+        })
           .then(r => r.ok ? r.json() : session)
           .catch(() => session);
       }
@@ -293,7 +301,10 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
         try {
           const saveResponse = await fetch(`${apiUrl}/api/sessions`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('xtermweb_token')}`
+            },
             body: JSON.stringify({
               ...realSession,
               name: realSession.name || `${realSession.host}${realSession.port ? ':' + realSession.port : ''}`,
@@ -419,13 +430,19 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
     if (mode === 'edit' && sessionData.id) {
       await fetch(`${apiUrl}/api/sessions/${sessionData.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('xtermweb_token')}`
+        },
         body: JSON.stringify(body)
       });
     } else {
       await fetch(`${apiUrl}/api/sessions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('xtermweb_token')}`
+        },
         body: JSON.stringify(body)
       });
     }

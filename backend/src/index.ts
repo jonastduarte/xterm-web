@@ -183,7 +183,7 @@ app.delete('/api/folders/:id', async (req, res) => {
 // ===== Session Management Routes =====
 app.get('/api/sessions', async (req, res) => {
   try {
-    const rows = await dbQuery('SELECT id, name, host, port, username, password, folder_id, protocol, auth_type, use_sftp FROM sessions WHERE user_id = ?', [(req as any).user.id]);
+    const rows = await dbQuery('SELECT id, name, host, port, username, password, folder_id, protocol, auth_type, private_key, use_sftp FROM sessions WHERE user_id = ?', [(req as any).user.id]);
     res.json(rows.map(r => ({ ...r, password: r.password ? '***' : '' })));
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
@@ -499,15 +499,37 @@ app.post('/api/sftp/upload', upload.single('file'), (req, res) => {
         res.json({ message: 'File uploaded successfully', path: remoteFile });
       });
     });
+  let finalPass = password;
+  if (password && req.body.masterPassword && password !== '***') {
+    const dec = decrypt(password, req.body.masterPassword);
+    if (dec) finalPass = dec;
+  }
+  
+  ssh.on('ready', () => {
+    ssh.sftp((err, sftp) => {
+      if (err) {
+        ssh.end();
+        return res.status(500).json({ error: 'SFTP initialization failed' });
+      }
+      
+      const remoteFile = targetPath.endsWith('/') ? `${targetPath}${file.originalname}` : `${targetPath}/${file.originalname}`;
+      sftp.fastPut(file.path, remoteFile, (uploadErr) => {
+        ssh.end();
+        // Clean up temp file
+        try { fs.unlinkSync(file.path); } catch (e) { /* ignore */ }
+        if (uploadErr) return res.status(500).json({ error: uploadErr.message });
+        res.json({ message: 'File uploaded successfully', path: remoteFile });
+      });
+    });
   }).on('error', (err) => {
     res.status(500).json({ error: err.message });
   }).connect({ 
     host, 
     port: Number(port) || 22, 
     username, 
-    password: req.body.auth_type === 'password' ? password : undefined,
+    password: req.body.auth_type === 'password' ? finalPass : undefined,
     privateKey: req.body.auth_type === 'key' ? req.body.private_key : undefined,
-    passphrase: req.body.auth_type === 'key' ? password : undefined
+    passphrase: req.body.auth_type === 'key' ? finalPass : undefined
   });
 });
 
@@ -517,6 +539,12 @@ app.get('/api/sftp/download', (req, res) => {
   if (!targetPath) return res.status(400).json({ error: 'targetPath required' });
 
   const ssh = new Client();
+  let finalPass = password;
+  if (password && req.query.masterPassword && password !== '***') {
+    const dec = decrypt(password, req.query.masterPassword as string);
+    if (dec) finalPass = dec;
+  }
+
   ssh.on('ready', () => {
     ssh.sftp((err, sftp) => {
       if (err) {
@@ -536,14 +564,14 @@ app.get('/api/sftp/download', (req, res) => {
     });
   }).on('error', (err: any) => {
     if (!res.headersSent) res.status(500).json({ error: err.message });
-      }).connect({ 
-        host: host as string, 
-        port: Number(port) || 22, 
-        username: username as string, 
-        password: req.query.auth_type === 'password' ? (password as string) : undefined,
-        privateKey: req.query.auth_type === 'key' ? (req.query.private_key as string) : undefined,
-        passphrase: req.query.auth_type === 'key' ? (password as string) : undefined
-      });
+  }).connect({ 
+    host: host as string, 
+    port: Number(port) || 22, 
+    username: username as string, 
+    password: req.query.auth_type === 'password' ? (finalPass as string) : undefined,
+    privateKey: req.query.auth_type === 'key' ? (req.query.private_key as string) : undefined,
+    passphrase: req.query.auth_type === 'key' ? (finalPass as string) : undefined
+  });
 });
 
 // ===== FTP Endpoints =====
@@ -728,6 +756,13 @@ wss.on('connection', (ws: WebSocket) => {
       
       const decoded = decodeToken(token || '');
       const userId = decoded ? decoded.id : 1;
+      const { masterPassword } = data.payload;
+
+      let finalConnectPassword = password;
+      if (password && masterPassword && password !== '***') {
+        const decrypted = decrypt(password, masterPassword);
+        if (decrypted) finalConnectPassword = decrypted;
+      }
 
       // Check if we are reattaching to an existing session
       if (persistenceId && sessionRegistry.has(persistenceId)) {
@@ -842,9 +877,9 @@ wss.on('connection', (ws: WebSocket) => {
           host, 
           port: port || 22, 
           username, 
-          password: auth_type === 'password' ? password : undefined,
+          password: auth_type === 'password' ? finalConnectPassword : undefined,
           privateKey: auth_type === 'key' ? private_key : undefined,
-          passphrase: auth_type === 'key' ? password : undefined
+          passphrase: auth_type === 'key' ? finalConnectPassword : undefined
         });
         
         const session = sessionRegistry.get(persistenceId);
@@ -902,9 +937,9 @@ wss.on('connection', (ws: WebSocket) => {
           host, 
           port: port || 22, 
           username, 
-          password: auth_type === 'password' ? password : undefined,
+          password: auth_type === 'password' ? finalConnectPassword : undefined,
           privateKey: auth_type === 'key' ? private_key : undefined,
-          passphrase: auth_type === 'key' ? password : undefined
+          passphrase: auth_type === 'key' ? finalConnectPassword : undefined
         });
       }
     }
