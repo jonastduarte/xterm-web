@@ -20,8 +20,13 @@ const SessionTree: React.FC<SessionTreeProps> = ({ apiUrl, onConnect, onEdit, on
   const [newFolderName, setNewFolderName] = useState('');
   
   const refreshData = useCallback(() => {
-    fetch(`${apiUrl}/api/folders`).then(r => r.json()).then(setFolders).catch(() => {});
-    fetch(`${apiUrl}/api/sessions`).then(r => r.json()).then(setSessions).catch(() => {});
+    const token = localStorage.getItem('xtermweb_token');
+    fetch(`${apiUrl}/api/folders`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    }).then(r => r.json()).then(setFolders).catch(() => {});
+    fetch(`${apiUrl}/api/sessions`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    }).then(r => r.json()).then(setSessions).catch(() => {});
   }, [apiUrl]);
 
   useEffect(() => {
@@ -57,13 +62,19 @@ const SessionTree: React.FC<SessionTreeProps> = ({ apiUrl, onConnect, onEdit, on
     if (type === 'session') {
       fetch(`${apiUrl}/api/sessions/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('xtermweb_token')}`
+        },
         body: JSON.stringify({ folder_id: targetFolderId })
       }).then(() => refreshData());
     } else if (type === 'folder') {
       fetch(`${apiUrl}/api/folders/${id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('xtermweb_token')}`
+        },
         body: JSON.stringify({ parent_id: targetFolderId })
       }).then(() => refreshData());
     }
@@ -74,7 +85,10 @@ const SessionTree: React.FC<SessionTreeProps> = ({ apiUrl, onConnect, onEdit, on
     const parentId = isCreatingFolder === 'root' ? null : isCreatingFolder;
     fetch(`${apiUrl}/api/folders`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('xtermweb_token')}`
+      },
       body: JSON.stringify({ name: newFolderName.trim(), parent_id: parentId })
     })
     .then(res => {
@@ -108,7 +122,9 @@ const SessionTree: React.FC<SessionTreeProps> = ({ apiUrl, onConnect, onEdit, on
   };
 
   const handleExport = () => {
-    fetch(`${apiUrl}/api/sessions/export/all`)
+    fetch(`${apiUrl}/api/sessions/export/all`, {
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('xtermweb_token')}` }
+    })
       .then(res => {
         if (!res.ok) throw new Error('Export failed');
         return res.blob();
@@ -150,7 +166,10 @@ const SessionTree: React.FC<SessionTreeProps> = ({ apiUrl, onConnect, onEdit, on
         if (data) {
           fetch(`${apiUrl}/api/sessions/import`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('xtermweb_token')}`
+            },
             body: JSON.stringify(data)
           }).then(() => {
             refreshData();
@@ -239,13 +258,19 @@ const SessionTree: React.FC<SessionTreeProps> = ({ apiUrl, onConnect, onEdit, on
   const deleteSession = (e: React.MouseEvent, id: number) => {
     e.stopPropagation();
     if (!confirm(t('alert_del_session'))) return;
-    fetch(`${apiUrl}/api/sessions/${id}`, { method: 'DELETE' }).then(() => refreshData());
+    fetch(`${apiUrl}/api/sessions/${id}`, { 
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('xtermweb_token')}` }
+    }).then(() => refreshData());
   };
 
   const deleteFolder = (e: React.MouseEvent, id: number) => {
     e.stopPropagation();
     if (!confirm(t('alert_del_folder'))) return;
-    fetch(`${apiUrl}/api/folders/${id}`, { method: 'DELETE' }).then(() => refreshData());
+    fetch(`${apiUrl}/api/folders/${id}`, { 
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${localStorage.getItem('xtermweb_token')}` }
+    }).then(() => refreshData());
   };
 
   const getProtocolIcon = (protocol: string) => {
@@ -423,7 +448,7 @@ const SessionTree: React.FC<SessionTreeProps> = ({ apiUrl, onConnect, onEdit, on
                 <Copy size={13} /> <span>{t('st_clone')}</span>
               </div>
               <div style={{ height: '1px', backgroundColor: '#eee', margin: '4px 0' }} />
-              <div onClick={() => { if (confirm(t('alert_del_session'))) { fetch(`${apiUrl}/api/sessions/${contextMenu.item.id}`, { method: 'DELETE' }).then(() => refreshData()); } setContextMenu(null); }} style={{ ...ctxItemStyle, color: '#cc0000' }} onMouseEnter={ctxHover} onMouseLeave={ctxLeave}>
+              <div onClick={() => { if (confirm(t('alert_del_session'))) { fetch(`${apiUrl}/api/sessions/${contextMenu.item.id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${localStorage.getItem('xtermweb_token')}` } }).then(() => refreshData()); } setContextMenu(null); }} style={{ ...ctxItemStyle, color: '#cc0000' }} onMouseEnter={ctxHover} onMouseLeave={ctxLeave}>
                 <Trash2 size={13} color="#cc0000" /> <span>{t('st_delete')}</span>
               </div>
             </>
@@ -437,7 +462,7 @@ const SessionTree: React.FC<SessionTreeProps> = ({ apiUrl, onConnect, onEdit, on
                 <PlusCircle size={13} /> <span>{t('st_create_sub')}</span>
               </div>
               <div style={{ height: '1px', backgroundColor: '#eee', margin: '4px 0' }} />
-              <div onClick={() => { if (confirm(t('alert_del_folder2'))) { fetch(`${apiUrl}/api/folders/${contextMenu.item.id}`, { method: 'DELETE' }).then(() => refreshData()); } setContextMenu(null); }} style={{ ...ctxItemStyle, color: '#cc0000' }} onMouseEnter={ctxHover} onMouseLeave={ctxLeave}>
+              <div onClick={() => { if (confirm(t('alert_del_folder2'))) { fetch(`${apiUrl}/api/folders/${contextMenu.item.id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${localStorage.getItem('xtermweb_token')}` } }).then(() => refreshData()); } setContextMenu(null); }} style={{ ...ctxItemStyle, color: '#cc0000' }} onMouseEnter={ctxHover} onMouseLeave={ctxLeave}>
                 <Trash2 size={13} color="#cc0000" /> <span>{t('st_delete_folder')}</span>
               </div>
             </>

@@ -122,6 +122,7 @@ export const T = {
   sd_auth_password:  { en: 'Password',         pt: 'Senha',            es: 'Contraseña',        zh: '密码'      },
   sd_auth_key:       { en: 'Private Key (RSA/ED25519)', pt: 'Chave Privada (RSA/ED25519)', es: 'Clave Privada (RSA/ED25519)', zh: '私钥 (RSA/ED25519)' },
   sd_key_paste:      { en: 'Private Key (paste content)', pt: 'Chave Privada (cole o conteúdo)', es: 'Clave Privada (pegue el contenido)', zh: '私钥（粘贴内容）' },
+  sd_key_browse:     { en: 'Browse file...',        pt: 'Procurar arquivo...',      es: 'Buscar arquivo...',       zh: '浏览文件...' },
   sd_key_passphrase: { en: 'Key Passphrase (if any)',     pt: 'Frase-senha da chave (se houver)', es: 'Frase de contraseña (si aplica)', zh: '密钥密码（如有）' },
   sd_key_empty:      { en: 'Leave empty if none',         pt: 'Deixe vazio se não houver',        es: 'Dejar vacío si no aplica',        zh: '无则留空'  },
   sd_sftp_enable:    { en: 'Enable SFTP browser (file panel on connect)', pt: 'Ativar painel SFTP (painel de arquivos na conexão)', es: 'Habilitar panel SFTP (al conectar)', zh: '启用SFTP文件浏览器（连接时显示）' },

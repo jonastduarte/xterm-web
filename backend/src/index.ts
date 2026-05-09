@@ -349,42 +349,7 @@ app.post('/api/sessions/:id/decrypt', async (req, res) => {
   } catch (err: any) { res.status(500).json({ error: err.message }); }
 });
 
-// ===== Import/Export Sessions =====
-app.get('/api/sessions/export/all', async (req, res) => {
-  try {
-    const sessions = await dbQuery('SELECT id, name, host, port, username, folder_id, protocol, auth_type, use_sftp FROM sessions');
-    const folders = await dbQuery('SELECT * FROM folders');
-    res.setHeader('Content-Disposition', 'attachment; filename=xterm-web-sessions.json');
-    res.json({ version: 1, exportedAt: new Date().toISOString(), folders, sessions });
-  } catch (err: any) { res.status(500).json({ error: err.message }); }
-});
 
-app.post('/api/sessions/import', async (req, res) => {
-  try {
-    const { folders, sessions } = req.body;
-    let imported = 0;
-    // Import folders first
-    const folderMap: Record<number, number> = {};
-    if (folders) {
-      for (const f of folders) {
-        const result = await dbRun('INSERT INTO folders (name) VALUES (?)', [f.name]);
-        folderMap[f.id] = result.lastID as number;
-      }
-    }
-    // Import sessions
-    if (sessions) {
-      for (const s of sessions) {
-        const newFolderId = s.folder_id ? (folderMap[s.folder_id] || null) : null;
-        await dbRun(
-          'INSERT INTO sessions (name, host, port, username, password, folder_id, protocol, auth_type, use_sftp) VALUES (?,?,?,?,?,?,?,?,?)',
-          [s.name, s.host, s.port || 22, s.username || '', '', newFolderId, s.protocol || 'ssh', s.auth_type || 'password', s.use_sftp ?? 1]
-        );
-        imported++;
-      }
-    }
-    res.json({ message: `Imported ${imported} sessions` });
-  } catch (err: any) { res.status(500).json({ error: err.message }); }
-});
 
 // ===== User Management Routes =====
 app.get('/api/users', async (req, res) => {
@@ -536,7 +501,14 @@ app.post('/api/sftp/upload', upload.single('file'), (req, res) => {
     });
   }).on('error', (err) => {
     res.status(500).json({ error: err.message });
-  }).connect({ host, port: Number(port) || 22, username, password });
+  }).connect({ 
+    host, 
+    port: Number(port) || 22, 
+    username, 
+    password: req.body.auth_type === 'password' ? password : undefined,
+    privateKey: req.body.auth_type === 'key' ? req.body.private_key : undefined,
+    passphrase: req.body.auth_type === 'key' ? password : undefined
+  });
 });
 
 // ===== SFTP File Download Endpoint =====
@@ -564,7 +536,14 @@ app.get('/api/sftp/download', (req, res) => {
     });
   }).on('error', (err: any) => {
     if (!res.headersSent) res.status(500).json({ error: err.message });
-  }).connect({ host, port: Number(port) || 22, username, password });
+  }).connect({ 
+    host, 
+    port: Number(port) || 22, 
+    username, 
+    password: req.query.auth_type === 'password' ? password : undefined,
+    privateKey: req.query.auth_type === 'key' ? req.query.private_key : undefined,
+    passphrase: req.query.auth_type === 'key' ? password : undefined
+  });
 });
 
 // ===== FTP Endpoints =====
@@ -859,7 +838,14 @@ wss.on('connection', (ws: WebSocket) => {
           });
         }).on('error', (err: any) => {
           ws.send(JSON.stringify({ type: 'error', payload: err.message || err.level || 'SFTP Connection failed' }));
-        }).connect({ host, port: port || 22, username, password });
+        }).connect({ 
+          host, 
+          port: port || 22, 
+          username, 
+          password: auth_type === 'password' ? password : undefined,
+          privateKey: auth_type === 'key' ? private_key : undefined,
+          passphrase: auth_type === 'key' ? password : undefined
+        });
         
         const session = sessionRegistry.get(persistenceId);
         if (session) session.ssh = ssh;
@@ -912,7 +898,14 @@ wss.on('connection', (ws: WebSocket) => {
           });
         }).on('error', (err: any) => {
           ws.send(JSON.stringify({ type: 'error', payload: err.message || err.level || 'Connection failed' }));
-        }).connect({ host, port: port || 22, username, password });
+        }).connect({ 
+          host, 
+          port: port || 22, 
+          username, 
+          password: auth_type === 'password' ? password : undefined,
+          privateKey: auth_type === 'key' ? private_key : undefined,
+          passphrase: auth_type === 'key' ? password : undefined
+        });
       }
     }
 

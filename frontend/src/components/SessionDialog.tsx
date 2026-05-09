@@ -18,7 +18,10 @@ const SessionDialog: React.FC<SessionDialogProps> = ({ onClose, onSave, initialD
   
   useEffect(() => {
     const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-    fetch(`${apiUrl}/api/folders`).then(r => r.json()).then(setFolders).catch(() => {});
+    const token = localStorage.getItem('xtermweb_token');
+    fetch(`${apiUrl}/api/folders`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    }).then(r => r.json()).then(setFolders).catch(() => {});
   }, []);
 
   const [activeTab, setActiveTab] = useState(defaultProtocol.toUpperCase());
@@ -121,7 +124,22 @@ const SessionDialog: React.FC<SessionDialogProps> = ({ onClose, onSave, initialD
         )}
         {formData.auth_type === 'key' && (
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <label style={labelStyle}><Key size={12} style={{ marginRight: '4px' }} />{t('sd_key_paste')}</label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '4px' }}>
+              <label style={labelStyle}><Key size={12} style={{ marginRight: '4px' }} />{t('sd_key_paste')}</label>
+              <label style={{ ...labelStyle, color: '#005a9e', cursor: 'pointer', fontSize: '11px', textDecoration: 'underline' }}>
+                {t('sd_key_browse')}
+                <input type="file" style={{ display: 'none' }} onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                      setFormData({ ...formData, private_key: ev.target?.result as string });
+                    };
+                    reader.readAsText(file);
+                  }
+                }} />
+              </label>
+            </div>
             <textarea value={formData.private_key} onChange={e => setFormData({...formData, private_key: e.target.value})} style={{ ...inputStyle, height: '80px', fontFamily: 'monospace', fontSize: '11px', resize: 'vertical' }} placeholder="-----BEGIN RSA PRIVATE KEY-----&#10;..." />
             <div style={{ display: 'flex', flexDirection: 'column', width: '250px', marginTop: '8px' }}>
               <label style={labelStyle}>{t('sd_key_passphrase')}</label>
