@@ -33,13 +33,6 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
-    networks:
-      - xterm-network
-
 volumes:
   backend-data:
   backend-logs:
-
-networks:
-  xterm-network:
-    driver: bridge
