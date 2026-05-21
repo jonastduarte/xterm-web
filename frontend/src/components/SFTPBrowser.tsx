@@ -13,9 +13,10 @@ interface SFTPBrowserProps {
   ws: WebSocket | null;
   apiUrl?: string;
   credentials?: any;
+  masterPassword?: string;
 }
 
-const SFTPBrowser: React.FC<SFTPBrowserProps> = ({ ws, apiUrl, credentials }) => {
+const SFTPBrowser: React.FC<SFTPBrowserProps> = ({ ws, apiUrl, credentials, masterPassword }) => {
   const [currentPath, setCurrentPath] = useState<string>('.');
   const [files, setFiles] = useState<SFTPFile[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
@@ -103,10 +104,16 @@ const SFTPBrowser: React.FC<SFTPBrowserProps> = ({ ws, apiUrl, credentials }) =>
     if (file.isDirectory || !apiUrl || !credentials) return;
     const downloadPath = currentPath.endsWith('/') ? `${currentPath}${file.filename}` : `${currentPath}/${file.filename}`;
     
+    const token = localStorage.getItem('xtermweb_token');
     const params = new URLSearchParams({
       host: credentials.host,
-      username: credentials.username,
+      port: String(credentials.port || 22),
+      username: credentials.username || '',
       password: credentials.password || '',
+      auth_type: credentials.auth_type || 'password',
+      private_key: credentials.private_key || '',
+      masterPassword: masterPassword || '',
+      token: token || '',
       targetPath: downloadPath
     });
     
@@ -118,15 +125,23 @@ const SFTPBrowser: React.FC<SFTPBrowserProps> = ({ ws, apiUrl, credentials }) =>
     if (!file || !apiUrl || !credentials) return;
 
     setLoading(true);
+    const token = localStorage.getItem('xtermweb_token');
     const formData = new FormData();
     formData.append('file', file);
     formData.append('host', credentials.host);
-    formData.append('username', credentials.username);
+    formData.append('port', String(credentials.port || 22));
+    formData.append('username', credentials.username || '');
     formData.append('password', credentials.password || '');
+    formData.append('auth_type', credentials.auth_type || 'password');
+    formData.append('private_key', credentials.private_key || '');
+    formData.append('masterPassword', masterPassword || '');
     formData.append('targetPath', currentPath === '.' ? '' : currentPath);
 
     fetch(`${apiUrl}/api/sftp/upload`, {
       method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
       body: formData
     })
     .then(r => r.json())

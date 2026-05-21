@@ -1,38 +1,41 @@
-version: '3.8'
-
 services:
   backend:
-    image: ghcr.io/jonastduarte/xterm-web/backend:latest
+    image: xterm-web-backend:latest
+    ports:
+      - "${BACKEND_PORT:-3030}:${BACKEND_PORT:-3030}"
     build:
       context: ./backend
       dockerfile: Dockerfile
-    ports:
-      - "${BACKEND_PORT:-3000}:3000"
     environment:
-      - PORT=3000
+      - PORT=${BACKEND_PORT:-3030}
       - JWT_SECRET=${JWT_SECRET:-supersecret_xtermweb_clone_key}
       - DB_FILE=/app/data/database.sqlite
       - DATA_DIR=/app/data
     volumes:
       - backend-data:/app/data
       - backend-logs:/app/data/session_logs
+      - ./certificates/xterm.crt:/app/ssl/server.crt:ro
+      - ./certificates/xterm.key:/app/ssl/server.key:ro
     restart: unless-stopped
-    networks:
-      - xterm-network
 
   frontend:
-    image: ghcr.io/jonastduarte/xterm-web/frontend:latest
+    image: xterm-web-frontend:latest
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+      - "8443:443"
     build:
       context: ./frontend
       dockerfile: Dockerfile
       args:
         - VITE_API_URL=${SERVICE_URL_BACKEND:-}
         - VITE_WS_URL=${SERVICE_FQDN_BACKEND:-}
-    ports:
-      - "${FRONTEND_PORT:-80}:80"
+    volumes:
+      - ./certificates/xterm.crt:/etc/nginx/ssl/nginx.crt:ro
+      - ./certificates/xterm.key:/etc/nginx/ssl/nginx.key:ro
     depends_on:
       - backend
     restart: unless-stopped
+
 volumes:
   backend-data:
   backend-logs:

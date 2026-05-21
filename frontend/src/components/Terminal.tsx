@@ -198,20 +198,46 @@ const TerminalComponent: React.FC<TerminalComponentProps> = ({ tab, onData, onRe
     term.onSelectionChange(() => {
       const selection = term.getSelection();
       if (selection) {
-        navigator.clipboard.writeText(selection).catch(() => {});
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(selection).catch(() => {});
+        } else {
+          // Fallback for non-secure contexts (HTTP)
+          const textArea = document.createElement("textarea");
+          textArea.value = selection;
+          textArea.style.position = "fixed";  // Avoid scrolling to bottom
+          document.body.appendChild(textArea);
+          textArea.focus();
+          textArea.select();
+          try {
+            document.execCommand('copy');
+          } catch (err) {
+            console.error('Fallback: Oops, unable to copy', err);
+          }
+          document.body.removeChild(textArea);
+        }
       }
     });
 
     const handleContextMenu = async (e: MouseEvent) => {
       e.preventDefault();
       try {
-        const text = await navigator.clipboard.readText();
+        let text = '';
+        if (navigator.clipboard && navigator.clipboard.readText) {
+          text = await navigator.clipboard.readText();
+        } else {
+          // Insecure context fallback: cannot read clipboard programmatically usually,
+          // but we can prompt the user to use Ctrl+V. We will just inform them or try fallback if extension allows.
+          alert('Clipboard reading is blocked in insecure connections (HTTP). Please press Ctrl+V to paste or use HTTPS.');
+          return;
+        }
         if (text) {
           setPasteContent(text);
           setPasteModalOpen(true);
         }
       } catch (err) {
         console.error('Failed to read clipboard', err);
+        // Fallback info if paste failed even in HTTPS (permission denied)
+        alert('Failed to read clipboard automatically. Please press Ctrl+V to paste.');
       }
     };
 

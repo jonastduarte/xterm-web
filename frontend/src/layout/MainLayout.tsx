@@ -109,6 +109,26 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
   const [defaultUserInput, setDefaultUserInput] = useState('');
   const [defaultCredsEnabledInput, setDefaultCredsEnabledInput] = useState(false);
 
+  // Helper function to apply default credentials when username/password are empty
+  const applyDefaultCredentials = (session: any) => {
+    const isEnabled = localStorage.getItem('xtermweb_default_creds_enabled') === 'true';
+    if (!isEnabled) return session;
+    
+    const updatedSession = { ...session };
+    
+    // Apply default username if username is empty or just whitespace
+    if (!updatedSession.username || updatedSession.username.trim() === '') {
+      updatedSession.username = localStorage.getItem('xtermweb_default_username') || '';
+    }
+    
+    // Apply default password if password is empty or just whitespace
+    if (!updatedSession.password || updatedSession.password.trim() === '') {
+      updatedSession.password = localStorage.getItem('xtermweb_default_password') || '';
+    }
+    
+    return updatedSession;
+  };
+
   // Refs for click-outside-to-close
   const viewDropdownRef = useRef<HTMLDivElement>(null);
   const splitDropdownRef = useRef<HTMLDivElement>(null);
@@ -257,7 +277,22 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
   };
 
   const createConnection = useCallback((session: any, existingTabId?: string) => {
-    const wsUrl = import.meta.env.VITE_WS_URL || (window.location.hostname.includes('localhost') ? 'ws://localhost:3000' : `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws`);
+    // Auto-detect WebSocket URL based on current location
+    const getWsUrl = () => {
+      if (import.meta.env.VITE_WS_URL) {
+        return import.meta.env.VITE_WS_URL;
+      }
+      const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+      const hostname = window.location.hostname;
+      const port = window.location.hostname.includes('localhost') ? (window.location.protocol === 'https:' ? '3443' : '3030') : '3030';
+      
+      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        return `${protocol}://localhost:${port}`;
+      }
+      return `${protocol}://${hostname}:${port}`;
+    };
+    
+    const wsUrl = getWsUrl();
     const protocol = session.protocol || 'ssh';
     const tabId = existingTabId || `tab-${++tabCounter}-${Date.now()}`;
 
@@ -296,6 +331,20 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
         }
       }
 
+      const sessionWithDefaults = applyDefaultCredentials(realSession);
+      
+      if (['ssh', 'sftp', 'ftp', 'rdp', 'vnc'].includes(protocol)) {
+        const hasUsername = sessionWithDefaults.username && sessionWithDefaults.username.trim() !== '';
+        const needsPassword = sessionWithDefaults.auth_type !== 'key';
+        const hasPassword = sessionWithDefaults.password && sessionWithDefaults.password.trim() !== '';
+        
+        if (!hasUsername || (needsPassword && !hasPassword)) {
+          alert('Você precisa cadastrar o usuario e senha no cadastro do host ou em Default Credentials.');
+          setTabs(prev => prev.filter(t => t.id !== tabId));
+          return;
+        }
+      }
+
       // Auto-save session if it doesn't have an ID (e.g. Quick Connect)
       if (!realSession.id) {
         try {
@@ -329,23 +378,19 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
       websocket.onopen = () => {
         websocket.send(JSON.stringify({
           type: 'connect',
-          payload: { ...realSession, protocol, tabId, masterPassword: currentMasterPass, token: localStorage.getItem('xtermweb_token'), persistenceId: tabId }
+          payload: { ...sessionWithDefaults, protocol, tabId, masterPassword: currentMasterPass, token: localStorage.getItem('xtermweb_token'), persistenceId: tabId }
         }));
         setTabs(prev => prev.map(t =>
-          t.id === tabId ? { ...t, ws: websocket, session: realSession } : t
+          t.id === tabId ? { ...t, ws: websocket, session: sessionWithDefaults } : t
         ));
       };
 
       websocket.onclose = () => {
-        setTabs(prev => prev.map(t =>
-          t.id === tabId ? { ...t, ws: null } : t
-        ));
+        closeTab(tabId);
       };
 
       websocket.onerror = () => {
-        setTabs(prev => prev.map(t =>
-          t.id === tabId ? { ...t, ws: null } : t
-        ));
+        closeTab(tabId);
       };
     });
   }, [apiUrl]); // Only re-bind on apiUrl change
@@ -663,7 +708,9 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
         <div style={{ flex: 1 }}></div>
         <RibbonBtn icon={<HelpCircle size={22} color="#3498db" />} label={t('ribbon_help')} onClick={() => setHelpDialogOpen(true)} />
         <RibbonBtn icon={<Power size={22} color="#e74c3c" />} label={t('ribbon_exit')} onClick={() => {
-          tabs.forEach(t => closeTab(t.id));
+          if (activeTabId) {
+            closeTab(activeTabId);
+          }
         }} />
 
         <div style={{ width: '1px', height: '36px', backgroundColor: '#d3d3d3', margin: '0 4px' }} />
@@ -971,6 +1018,7 @@ const MainLayout: React.FC<MainLayoutProps> = ({ onLogout, apiUrl, username, rol
                     ws={activeTab!.ws}
                     apiUrl={apiUrl}
                     credentials={activeTab!.session}
+                    masterPassword={masterPassword || undefined}
                   />
                 </div>
                 {/* SFTP Resizer */}

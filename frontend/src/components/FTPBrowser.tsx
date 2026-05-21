@@ -38,9 +38,13 @@ const FTPBrowser: React.FC<FTPBrowserProps> = ({ apiUrl, credentials }) => {
     setLoading(true);
     setError(null);
     try {
+      const token = localStorage.getItem('xtermweb_token');
       const res = await fetch(`${apiUrl}/api/ftp/list`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
           host: credentials.host,
           port: credentials.port || 21,
@@ -93,11 +97,13 @@ const FTPBrowser: React.FC<FTPBrowserProps> = ({ apiUrl, credentials }) => {
     if (file.isDirectory) return;
     const downloadPath = currentPath.endsWith('/') ? `${currentPath}${file.filename}` : `${currentPath}/${file.filename}`;
     
+    const token = localStorage.getItem('xtermweb_token');
     const params = new URLSearchParams({
       host: credentials.host,
       port: String(credentials.port || 21),
       username: credentials.username,
       password: credentials.password || '',
+      token: token || '',
       targetPath: downloadPath
     });
     
@@ -118,8 +124,12 @@ const FTPBrowser: React.FC<FTPBrowserProps> = ({ apiUrl, credentials }) => {
     formData.append('targetPath', currentPath);
 
     try {
+      const token = localStorage.getItem('xtermweb_token');
       await fetch(`${apiUrl}/api/ftp/upload`, {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
         body: formData
       });
       loadDirectory(currentPath);
@@ -136,9 +146,13 @@ const FTPBrowser: React.FC<FTPBrowserProps> = ({ apiUrl, credentials }) => {
     const filePath = currentPath.endsWith('/') ? `${currentPath}${file.filename}` : `${currentPath}/${file.filename}`;
     
     try {
+      const token = localStorage.getItem('xtermweb_token');
       await fetch(`${apiUrl}/api/ftp/delete`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
           host: credentials.host,
           port: credentials.port || 21,
@@ -161,9 +175,13 @@ const FTPBrowser: React.FC<FTPBrowserProps> = ({ apiUrl, credentials }) => {
     const newPath = currentPath.endsWith('/') ? `${currentPath}${newName}` : `${currentPath}/${newName}`;
     
     try {
+      const token = localStorage.getItem('xtermweb_token');
       await fetch(`${apiUrl}/api/ftp/rename`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
           host: credentials.host,
           port: credentials.port || 21,
@@ -185,9 +203,13 @@ const FTPBrowser: React.FC<FTPBrowserProps> = ({ apiUrl, credentials }) => {
     const dirPath = currentPath.endsWith('/') ? `${currentPath}${name}` : `${currentPath}/${name}`;
     
     try {
+      const token = localStorage.getItem('xtermweb_token');
       await fetch(`${apiUrl}/api/ftp/mkdir`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
           host: credentials.host,
           port: credentials.port || 21,

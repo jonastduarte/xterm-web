@@ -27,8 +27,21 @@ function App() {
   const [token, setToken] = useState<string | null>(localStorage.getItem('xtermweb_token'));
   const [username, setUsername] = useState<string | null>(localStorage.getItem('xtermweb_user'));
 
-  const apiUrl = import.meta.env.VITE_API_URL || (window.location.hostname.includes('localhost') ? 'http://localhost:3000' : '');
-  console.log('Resolved API URL:', apiUrl || '(relative)');
+  const apiUrl = import.meta.env.VITE_API_URL || (() => {
+    const hostname = window.location.hostname;
+    const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
+    
+    // Força HTTPS em produção/remoto, em desenvolvimento local respeita o protocolo do navegador
+    const protocol = isLocal ? (window.location.protocol === 'https:' ? 'https' : 'http') : 'https';
+    const port = isLocal ? (protocol === 'https' ? '3443' : '3030') : '3030';
+    
+    if (isLocal) {
+      return `${protocol}://localhost:${port}`;
+    }
+    // For remote connections, force strict HTTPS
+    return `https://${hostname}:${port}`;
+  })();
+  console.log('Resolved API URL:', apiUrl);
 
   const handleLogin = (t: string, u: string) => {
     localStorage.setItem('xtermweb_token', t);
@@ -58,10 +71,13 @@ function App() {
   let userId = null;
   if (token) {
     try {
-      const decoded = atob(token);
-      const parts = decoded.split(':');
-      userId = parseInt(parts[0]);
-      role = parts[2];
+      const parts = token.split('.');
+      if (parts.length === 3) {
+        const payloadDecoded = atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'));
+        const payload = JSON.parse(payloadDecoded);
+        userId = payload.id;
+        role = payload.role;
+      }
     } catch(e) {}
   }
 

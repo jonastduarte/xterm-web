@@ -10,3 +10,8 @@ frontend/dist/
 frontend/node_modules/
 backend/node_modules/
 .agent/
+
+# Certificados locais e dados pessoais de teste
+certificates/*.crt
+certificates/*.key
+docs/moba.ini

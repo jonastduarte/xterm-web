@@ -145,111 +145,223 @@ const SessionTree: React.FC<SessionTreeProps> = ({ apiUrl, onConnect, onEdit, on
   const handleImport = () => {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.json,.xtermwebconf';
+    input.accept = '*';
     input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
       const reader = new FileReader();
       reader.onload = () => {
-        let data: any = null;
-        try {
-          if (file.name.endsWith('.xtermwebconf')) {
-            data = parseXTermWebConf(reader.result as string);
-          } else {
-            data = JSON.parse(reader.result as string);
-          }
-        } catch (err: any) { 
-          alert(t('alert_inv_format') + err.message); 
-          return; 
+        const arrayBuffer = reader.result as ArrayBuffer;
+        const uint8 = new Uint8Array(arrayBuffer);
+        
+        // Detecção de encoding via BOM (Byte Order Mark)
+        let encoding = 'utf-8';
+        let offset = 0;
+        
+        if (uint8[0] === 0xFF && uint8[1] === 0xFE) {
+          encoding = 'utf-16le';
+          offset = 2;
+        } else if (uint8[0] === 0xFE && uint8[1] === 0xFF) {
+          encoding = 'utf-16be';
+          offset = 2;
+        } else if (uint8[0] === 0xEF && uint8[1] === 0xBB && uint8[2] === 0xBF) {
+          encoding = 'utf-8';
+          offset = 3;
         }
 
-        if (data) {
-          fetch(`${apiUrl}/api/sessions/import`, {
-            method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('xtermweb_token')}`
-            },
-            body: JSON.stringify(data)
-          }).then(() => {
-            refreshData();
-            alert(t('alert_imp_succ'));
-          });
+        try {
+          const decoder = new TextDecoder(encoding);
+          const text = decoder.decode(uint8.subarray(offset)).trim();
+          
+          let data: any = null;
+          let isMoba = false;
+          
+          // Abordagem robusta com bloco Try-Catch para diferenciar JSON nativo de INI do Moba
+          try {
+            data = JSON.parse(text);
+          } catch (jsonErr) {
+            data = parseXTermWebConf(text);
+            isMoba = true;
+          }
+
+          if (data && (data.sessions?.length > 0 || data.folders?.length > 0)) {
+            fetch(`${apiUrl}/api/sessions/import`, {
+              method: 'POST',
+              headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('xtermweb_token')}`
+              },
+              body: JSON.stringify(data)
+            }).then(async (res) => {
+              if (res.ok) {
+                refreshData();
+                if (isMoba) {
+                  alert(
+                    `Importação do MobaXterm concluída!\n\n` +
+                    `• Pastas criadas: ${data.folders.length}\n` +
+                    `• Sessões importadas: ${data.sessions.length}\n\n` +
+                    `Nota de Segurança: As senhas criptografadas do MobaXterm foram preservadas em branco devido à portabilidade do sistema original. Por favor, insira as credenciais reais no primeiro acesso.`
+                  );
+                } else {
+                  alert(`${t('alert_imp_succ')} (${data.sessions.length} conexões, ${data.folders.length} pastas)`);
+                }
+              } else {
+                const errData = await res.json();
+                alert(t('alert_err') + (errData.error || 'Erro interno do servidor'));
+              }
+            }).catch(err => {
+              alert(t('alert_err') + err.message);
+            });
+          } else {
+            alert("Nenhuma sessão ou pasta válida foi encontrada no arquivo importado.");
+          }
+        } catch (err: any) { 
+          alert(t('alert_inv_format') + ' - ' + err.message); 
         }
       };
-      reader.readAsText(file);
+      reader.readAsArrayBuffer(file);
     };
     input.click();
   };
 
   const parseXTermWebConf = (text: string) => {
-    const lines = text.split('\n');
+    const lines = text.split(/\r?\n/);
     const importFolders: any[] = [];
     const importSessions: any[] = [];
     const folderMap: Record<string, number> = {};
     let currentFolderId: number | null = null;
     let currentFolderPath: string | undefined = undefined;
     let folderCounter = 1;
+    
+    // Credentials Map
+    const credentialsMap: Record<string, string> = {};
+    // Passwords Map
+    const passwordsMap: Record<string, string> = {};
+    let currentSection = '';
 
+    // First pass to extract [Credentials] and [Passwords]
     for (let line of lines) {
       line = line.trim();
       if (!line || line.startsWith(';')) continue;
-      
-      if (line.startsWith('[Bookmarks')) {
-         currentFolderPath = '';
-         currentFolderId = null;
-      } else if (line.startsWith('[')) {
-         currentFolderPath = undefined;
-         currentFolderId = null;
-      } else if (line.startsWith('SubRep=')) {
-         currentFolderPath = line.substring(7).trim();
-         if (currentFolderPath) {
-           const parts = currentFolderPath.split('\\');
-           let currentPath = '';
-           let parentId: number | null = null;
-           for (const part of parts) {
-             currentPath = currentPath ? currentPath + '\\' + part : part;
-             if (!folderMap[currentPath]) {
-               folderMap[currentPath] = folderCounter++;
-               importFolders.push({ id: folderMap[currentPath], name: part, parent_id: parentId });
-             }
-             parentId = folderMap[currentPath];
-           }
-           currentFolderId = folderMap[currentFolderPath];
-         }
-      } else if (line.includes('=#') && currentFolderPath !== undefined) {
-         const eqIdx = line.indexOf('=');
-         const name = line.substring(0, eqIdx).trim();
-         const val = line.substring(eqIdx + 1).trim();
-         if (val.startsWith('#')) {
-           const parts = val.split('%');
-           if (parts.length >= 4) {
-             let host = parts[1];
-             const port = parseInt(parts[2]) || 22;
-             let username = parts[3] || 'root';
-             
-             if (host.includes('@')) {
-                 const hostParts = host.split('@');
-                 host = hostParts[hostParts.length - 1];
-                 if (hostParts.length >= 2) username = hostParts[hostParts.length - 2];
-             }
 
-             let protocol = 'ssh';
-             if (val.startsWith('#98#')) protocol = 'telnet';
-             else if (val.startsWith('#83#')) protocol = 'sftp';
-             else if (val.startsWith('#105#')) protocol = 'ftp';
-             else if (val.startsWith('#131#')) protocol = 'serial';
-             
-             importSessions.push({
-               name: name,
-               host: host,
-               port: port,
-               username: username,
-               protocol: protocol,
-               folder_id: currentFolderId
-             });
-           }
-         }
+      if (line.startsWith('[') && line.endsWith(']')) {
+        currentSection = line.substring(1, line.length - 1).trim().toLowerCase();
+        continue;
+      }
+
+      if (currentSection === 'credentials') {
+        const eqIdx = line.indexOf('=');
+        if (eqIdx > 0) {
+          const key = line.substring(0, eqIdx).trim().toLowerCase();
+          const val = line.substring(eqIdx + 1).trim();
+          const userPart = val.split(':')[0] || val;
+          credentialsMap[key] = userPart;
+        }
+      } else if (currentSection === 'passwords') {
+        const eqIdx = line.indexOf('=');
+        if (eqIdx > 0) {
+          const key = line.substring(0, eqIdx).trim().toLowerCase();
+          const val = line.substring(eqIdx + 1).trim();
+          passwordsMap[key] = val;
+        }
+      }
+    }
+
+    currentSection = '';
+    for (let line of lines) {
+      line = line.trim();
+      if (!line || line.startsWith(';')) continue;
+
+      if (line.startsWith('[') && line.endsWith(']')) {
+        currentSection = line.substring(1, line.length - 1).trim().toLowerCase();
+        if (currentSection.startsWith('bookmarks')) {
+          currentFolderPath = '';
+          currentFolderId = null;
+        } else {
+          currentFolderPath = undefined;
+          currentFolderId = null;
+        }
+        continue;
+      }
+
+      if (currentSection && currentSection.startsWith('bookmarks')) {
+        if (line.startsWith('SubRep=')) {
+          let pathVal = line.substring(7).trim();
+          // Substituir \_ por espaço real
+          pathVal = pathVal.replace(/\\_/g, ' ');
+          currentFolderPath = pathVal;
+
+          if (currentFolderPath) {
+            const parts = currentFolderPath.split('\\');
+            let currentPath = '';
+            let parentId: number | null = null;
+            for (const part of parts) {
+              currentPath = currentPath ? currentPath + '\\' + part : part;
+              if (!folderMap[currentPath]) {
+                folderMap[currentPath] = folderCounter++;
+                importFolders.push({ id: folderMap[currentPath], name: part, parent_id: parentId });
+              }
+              parentId = folderMap[currentPath];
+            }
+            currentFolderId = folderMap[currentFolderPath];
+          }
+        } else if (line.includes('=#') && currentFolderPath !== undefined) {
+          const eqIdx = line.indexOf('=');
+          let name = line.substring(0, eqIdx).trim();
+          // Substituir \_ por espaço real no nome do bookmark
+          name = name.replace(/\\_/g, ' ');
+          
+          const val = line.substring(eqIdx + 1).trim();
+          if (val.startsWith('#')) {
+            const parts = val.split('%');
+            if (parts.length >= 4) {
+              let host = parts[1];
+              let port = parseInt(parts[2]) || 22;
+              let username = parts[3] || 'root';
+
+              if (host.includes('@')) {
+                const hostParts = host.split('@');
+                host = hostParts[hostParts.length - 1];
+                if (hostParts.length >= 2) username = hostParts[hostParts.length - 2];
+              }
+
+              // Resolvendo credenciais
+              if (username.startsWith('[') && username.endsWith(']')) {
+                const credKey = username.substring(1, username.length - 1).trim().toLowerCase();
+                if (credentialsMap[credKey]) {
+                  username = credentialsMap[credKey];
+                } else {
+                  username = username.substring(1, username.length - 1);
+                }
+              }
+
+              let protocol = 'ssh';
+              if (val.startsWith('#98#') || val.startsWith('#140#') || val.startsWith('#126#') || val.startsWith('#147#')) {
+                protocol = 'telnet';
+              } else if (val.startsWith('#83#')) {
+                protocol = 'sftp';
+              } else if (val.startsWith('#105#')) {
+                protocol = 'ftp';
+              } else if (val.startsWith('#131#')) {
+                protocol = 'serial';
+              } else {
+                // Fallback inteligente baseando-se na porta padrão
+                if (port === 23) protocol = 'telnet';
+                else if (port === 21) protocol = 'ftp';
+              }
+
+              importSessions.push({
+                name: name,
+                host: host,
+                port: port,
+                username: username,
+                protocol: protocol,
+                password: '', // Mantemos em branco para preenchimento de segurança manual no primeiro login
+                folder_id: currentFolderId
+              });
+            }
+          }
+        }
       }
     }
     return { folders: importFolders, sessions: importSessions };

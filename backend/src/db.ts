@@ -1,13 +1,32 @@
 import sqlite3 from 'sqlite3';
+import bcrypt from 'bcrypt';
+import path from 'path';
+import fs from 'fs';
+import { dataDir } from './config';
 
-// Using a persistent file if DB_FILE env is provided, else in-memory
-const dbPath = process.env.DB_FILE || ':memory:';
+// Banco físico padrão em dataDir/database.sqlite se DB_FILE não estiver configurado
+const defaultDbPath = path.join(dataDir, 'database.sqlite');
+const dbPath = process.env.DB_FILE || defaultDbPath;
+
+console.log(`Database path: ${dbPath}`);
+const parentDir = path.dirname(dbPath);
+if (!fs.existsSync(parentDir)) {
+  fs.mkdirSync(parentDir, { recursive: true });
+}
+
+// Validar permissão de escrita no diretório do banco
+try {
+  fs.accessSync(parentDir, fs.constants.W_OK);
+  console.log(`SQLite database directory is writable: ${parentDir}`);
+} catch (err: any) {
+  console.error(`CRITICAL ERROR: SQLite database directory is NOT writable! Path: ${parentDir}. Error: ${err.message}`);
+}
 
 const db = new sqlite3.Database(dbPath, (err) => {
   if (err) {
     console.error('Error opening database', err.message);
   } else {
-    console.log('Connected to SQLite database.');
+    console.log('Connected to SQLite database successfully.');
     db.serialize(() => {
       // Users — now with master_password_hash for vault
       db.run(`CREATE TABLE IF NOT EXISTS users (
@@ -17,7 +36,9 @@ const db = new sqlite3.Database(dbPath, (err) => {
         master_password_hash TEXT,
         role TEXT DEFAULT 'user'
       )`);
-      db.run(`INSERT INTO users (id, username, password) SELECT 1, 'admin', 'admin' WHERE NOT EXISTS (SELECT 1 FROM users WHERE id = 1)`);
+      
+      const adminHash = bcrypt.hashSync('admin', 10);
+      db.run(`INSERT INTO users (id, username, password, role) SELECT 1, 'admin', ?, 'admin' WHERE NOT EXISTS (SELECT 1 FROM users WHERE id = 1)`, [adminHash]);
       
       // Migrate: add master_password_hash column if it doesn't exist
       db.run(`ALTER TABLE users ADD COLUMN master_password_hash TEXT`, () => { /* ignore if exists */ });

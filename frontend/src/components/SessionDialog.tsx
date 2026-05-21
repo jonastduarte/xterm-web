@@ -17,7 +17,21 @@ const SessionDialog: React.FC<SessionDialogProps> = ({ onClose, onSave, initialD
   const [folders, setFolders] = useState<any[]>([]);
   
   useEffect(() => {
-    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+    const getApiUrl = () => {
+      if (import.meta.env.VITE_API_URL) {
+        return import.meta.env.VITE_API_URL;
+      }
+      const protocol = window.location.protocol === 'https:' ? 'https' : 'http';
+      const hostname = window.location.hostname;
+      const port = window.location.hostname.includes('localhost') ? (protocol === 'https' ? '3443' : '3030') : '3030';
+      
+      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        return `${protocol}://localhost:${port}`;
+      }
+      return `${protocol}://${hostname}:${port}`;
+    };
+    
+    const apiUrl = getApiUrl();
     const token = localStorage.getItem('xtermweb_token');
     fetch(`${apiUrl}/api/folders`, {
       headers: { 'Authorization': `Bearer ${token}` }
@@ -95,8 +109,8 @@ const SessionDialog: React.FC<SessionDialogProps> = ({ onClose, onSave, initialD
             <input type="text" value={formData.host} placeholder="192.168.0.1 or hostname" onChange={e => setFormData({...formData, host: e.target.value})} style={inputStyle} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-            <label style={labelStyle}>{t('sd_username')} <span style={{ color: '#c0392b' }}>*</span></label>
-            <input type="text" value={formData.username} placeholder="root" onChange={e => setFormData({...formData, username: e.target.value})} style={inputStyle} />
+              <label style={labelStyle}>{t('sd_username')} <span style={{ color: '#999', fontWeight: 'normal' }}>({t('sd_optional')})</span></label>
+              <input type="text" value={formData.username} placeholder="" onChange={e => setFormData({...formData, username: e.target.value})} style={inputStyle} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', width: '70px' }}>
             <label style={labelStyle}>{t('sd_port')}</label>
@@ -177,8 +191,8 @@ const SessionDialog: React.FC<SessionDialogProps> = ({ onClose, onSave, initialD
             <input type="text" value={formData.host} placeholder="192.168.0.1" onChange={e => setFormData({...formData, host: e.target.value})} style={inputStyle} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-            <label style={labelStyle}>{t('sd_username')} <span style={{ color: '#c0392b' }}>*</span></label>
-            <input type="text" value={formData.username} placeholder="root" onChange={e => setFormData({...formData, username: e.target.value})} style={inputStyle} />
+            <label style={labelStyle}>{t('sd_username')} <span style={{ color: '#999', fontWeight: 'normal' }}>({t('sd_optional')})</span></label>
+            <input type="text" value={formData.username} placeholder="" onChange={e => setFormData({...formData, username: e.target.value})} style={inputStyle} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', width: '70px' }}>
             <label style={labelStyle}>{t('sd_port')}</label>
@@ -342,7 +356,7 @@ const SessionDialog: React.FC<SessionDialogProps> = ({ onClose, onSave, initialD
               onSave(saveData, mode === 'edit' ? 'edit' : 'create');
             }}
             style={saveBtnStyle}
-            disabled={activeTab !== 'Serial' && (!formData.host || (!formData.username && activeTab !== 'Telnet' && activeTab !== 'FTP'))}
+            disabled={activeTab !== 'Serial' && !formData.host}
           >
             {mode === 'edit' ? t('sd_save_changes') : t('sd_connect_save')}
           </button>

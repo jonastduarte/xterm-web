@@ -174,6 +174,9 @@ export const T = {
   sl_no_logs:        { en: 'No logs found.', pt: 'Nenhum log encontrado.', es: 'No se encontraron registros.', zh: '未找到日志。' },
   sl_download:       { en: 'Download File', pt: 'Baixar Arquivo', es: 'Descargar Archivo', zh: '下载文件' },
   sl_trunc_warn:     { en: 'This log file exceeds 1000 lines. The preview has been truncated for performance. Please download the file to view the complete log.', pt: 'Este arquivo de log excede 1000 linhas. A visualização foi truncada para desempenho. Baixe o arquivo para ver o log completo.', es: 'Este archivo de registro excede las 1000 líneas. La vista previa se ha truncado por rendimiento. Descargue el archivo para ver el registro completo.', zh: '此日志文件超过1000行。为了性能，预览已被截断。请下载文件以查看完整日志。' },
+  sl_prev:           { en: 'Previous', pt: 'Anterior', es: 'Anterior', zh: '上一页' },
+  sl_next:           { en: 'Next',     pt: 'Próxima',  es: 'Siguiente', zh: '下一页' },
+  sl_page_info:      { en: 'Page {page} of {total} ({lines} total lines)', pt: 'Página {page} de {total} ({lines} linhas totais)', es: 'Página {page} de {total} ({lines} líneas totales)', zh: '第 {page} 页 / 共 {total} 页 (共 {lines} 行)' },
 
   // ── UserManagement Sidebar ───────────────────────────────────────
   um_title:          { en: 'Users', pt: 'Usuários', es: 'Usuarios', zh: '用户' },

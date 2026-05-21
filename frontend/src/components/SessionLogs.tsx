@@ -1,9 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Trash2, FileText, X, Eye, Search } from 'lucide-react';
+import { Download, FileText, X, Eye, Search } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 
 interface SessionLogsProps {
   apiUrl: string;
+}
+
+interface ViewingLogState {
+  name: string;
+  content: string;
+  page: number;
+  limit: number;
+  totalPages: number;
+  totalLines: number;
+  hasMore: boolean;
+  isTruncated: boolean;
 }
 
 const SessionLogs: React.FC<SessionLogsProps> = ({ apiUrl }) => {
@@ -11,7 +22,7 @@ const SessionLogs: React.FC<SessionLogsProps> = ({ apiUrl }) => {
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [viewingLog, setViewingLog] = useState<{ name: string, content: string, isTruncated: boolean } | null>(null);
+  const [viewingLog, setViewingLog] = useState<ViewingLogState | null>(null);
 
   useEffect(() => {
     fetchLogs();
@@ -28,22 +39,27 @@ const SessionLogs: React.FC<SessionLogsProps> = ({ apiUrl }) => {
     setLoading(false);
   };
 
-  const handleViewLog = async (filename: string) => {
+  const handleViewLog = async (filename: string, page = 1) => {
     try {
-      const res = await fetch(`${apiUrl}/api/logs/view/${filename}`);
+      const res = await fetch(`${apiUrl}/api/logs/view/${filename}?page=${page}&limit=500`);
       if (!res.ok) throw new Error('Failed to view log');
       const data = await res.json();
-      setViewingLog({ name: filename, content: data.content, isTruncated: data.isTruncated });
+      setViewingLog({
+        name: filename,
+        content: data.content,
+        page: data.page,
+        limit: data.limit,
+        totalPages: data.totalPages,
+        totalLines: data.totalLines,
+        hasMore: data.hasMore,
+        isTruncated: data.isTruncated
+      });
     } catch (err: any) {
       alert(t('alert_err') + err.message);
     }
   };
 
   const handleDownload = (filename: string) => {
-    const token = localStorage.getItem('xtermweb_token');
-    // Using fetch to download to easily attach auth headers if needed,
-    // though our token fetch interceptor already handles it.
-    // Wait, the interceptor intercepts fetch, but to trigger a download we need a blob.
     fetch(`${apiUrl}/api/logs/download/${filename}`)
       .then(res => {
          if (!res.ok) throw new Error('Download failed');
@@ -110,7 +126,7 @@ const SessionLogs: React.FC<SessionLogsProps> = ({ apiUrl }) => {
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-                <button onClick={() => handleViewLog(log.name)} title="View Log" style={iconBtnStyle}>
+                <button onClick={() => handleViewLog(log.name, 1)} title="View Log" style={iconBtnStyle}>
                   <Eye size={14} color="#2ecc71" />
                 </button>
                 <button onClick={() => handleDownload(log.name)} title="Download Log" style={iconBtnStyle}>
@@ -140,7 +156,7 @@ const SessionLogs: React.FC<SessionLogsProps> = ({ apiUrl }) => {
               </div>
             </div>
             
-            {viewingLog.isTruncated && (
+            {viewingLog.isTruncated && viewingLog.page === 1 && (
               <div style={{ padding: '10px 16px', backgroundColor: '#fff3cd', color: '#856404', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px', borderBottom: '1px solid #ffeeba' }}>
                 <span style={{ fontSize: '16px' }}>⚠️</span>
                 <span>{t('sl_trunc_warn')}</span>
@@ -149,6 +165,50 @@ const SessionLogs: React.FC<SessionLogsProps> = ({ apiUrl }) => {
             
             <div style={{ flex: 1, overflow: 'auto', padding: '16px', backgroundColor: '#1e1e1e', color: '#d4d4d4', fontFamily: 'monospace', fontSize: '13px', whiteSpace: 'pre-wrap' }}>
               {viewingLog.content}
+            </div>
+
+            {/* Rodapé da Paginação */}
+            <div style={{ padding: '12px 16px', borderTop: '1px solid #ccc', display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#f8f9fa' }}>
+              <span style={{ fontSize: '12px', color: '#666' }}>
+                {t('sl_page_info')
+                  .replace('{page}', String(viewingLog.page))
+                  .replace('{total}', String(viewingLog.totalPages))
+                  .replace('{lines}', String(viewingLog.totalLines))}
+              </span>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button 
+                  onClick={() => handleViewLog(viewingLog.name, viewingLog.page - 1)} 
+                  disabled={viewingLog.page <= 1}
+                  style={{ 
+                    padding: '6px 12px', 
+                    borderRadius: '4px', 
+                    border: '1px solid #ccc', 
+                    background: viewingLog.page <= 1 ? '#e9ecef' : '#fff', 
+                    color: viewingLog.page <= 1 ? '#adb5bd' : '#333', 
+                    cursor: viewingLog.page <= 1 ? 'not-allowed' : 'pointer',
+                    fontSize: '12px',
+                    fontWeight: '500'
+                  }}
+                >
+                  {t('sl_prev')}
+                </button>
+                <button 
+                  onClick={() => handleViewLog(viewingLog.name, viewingLog.page + 1)} 
+                  disabled={!viewingLog.hasMore}
+                  style={{ 
+                    padding: '6px 12px', 
+                    borderRadius: '4px', 
+                    border: '1px solid #ccc', 
+                    background: !viewingLog.hasMore ? '#e9ecef' : '#fff', 
+                    color: !viewingLog.hasMore ? '#adb5bd' : '#333', 
+                    cursor: !viewingLog.hasMore ? 'not-allowed' : 'pointer',
+                    fontSize: '12px',
+                    fontWeight: '500'
+                  }}
+                >
+                  {t('sl_next')}
+                </button>
+              </div>
             </div>
           </div>
         </div>
