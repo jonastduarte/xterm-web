@@ -94,7 +94,11 @@ export function initWebSocketServer(server: http.Server) {
 
       if (data.type === 'connect') {
         const { host, port, username, password, protocol, token, persistenceId, auth_type, private_key, use_sftp } = data.payload;
-        console.log('WebSocket connect payload: host=%s, port=%s, username=%s, auth_type=%s', host, port, username, auth_type);
+        
+        // Define default auth_type to prevent undefined values (e.g. from Quick Connect)
+        const effectiveAuthType = auth_type || 'password';
+        
+        console.log('WebSocket connect payload: host=%s, port=%s, username=%s, effectiveAuthType=%s', host, port, username, effectiveAuthType);
         currentPersistenceId = persistenceId;
         
         const decoded = decodeToken(token || '');
@@ -214,9 +218,9 @@ export function initWebSocketServer(server: http.Server) {
             host, 
             port: port || 22, 
             username, 
-            password: auth_type === 'password' ? finalConnectPassword : undefined,
-            privateKey: auth_type === 'key' ? private_key : undefined,
-            passphrase: auth_type === 'key' ? finalConnectPassword : undefined
+            password: effectiveAuthType === 'password' ? finalConnectPassword : undefined,
+            privateKey: effectiveAuthType === 'key' ? private_key : undefined,
+            passphrase: effectiveAuthType === 'key' ? finalConnectPassword : undefined
           });
           
           const session = sessionRegistry.get(sid);
@@ -224,8 +228,20 @@ export function initWebSocketServer(server: http.Server) {
           
         } else {
           ssh.on('keyboard-interactive', (name, instructions, instructionsLang, prompts, finish) => {
-            if (auth_type === 'password' && prompts.length > 0) {
-              finish([finalConnectPassword]);
+            if (effectiveAuthType === 'password' && prompts.length > 0) {
+              const answers = prompts.map(p => {
+                const promptText = p.prompt.toLowerCase();
+                // If prompt asks for password/passcode or is non-echoing (masked input), send the password
+                if (promptText.includes('password') || promptText.includes('senha') || promptText.includes('passcode') || p.echo === false) {
+                  return finalConnectPassword;
+                }
+                return '';
+              });
+              // Fallback: If no prompt matched keywords but we have prompts, send the password to the first one
+              if (answers.every(a => a === '')) {
+                answers[0] = finalConnectPassword;
+              }
+              finish(answers);
             } else {
               finish([]);
             }
@@ -286,9 +302,9 @@ export function initWebSocketServer(server: http.Server) {
             host, 
             port: port || 22, 
             username, 
-            password: auth_type === 'password' ? finalConnectPassword : undefined,
-            privateKey: auth_type === 'key' ? private_key : undefined,
-            passphrase: auth_type === 'key' ? finalConnectPassword : undefined,
+            password: effectiveAuthType === 'password' ? finalConnectPassword : undefined,
+            privateKey: effectiveAuthType === 'key' ? private_key : undefined,
+            passphrase: effectiveAuthType === 'key' ? finalConnectPassword : undefined,
             tryKeyboard: true,
             readyTimeout: 60000,
             keepaliveInterval: 10000,
